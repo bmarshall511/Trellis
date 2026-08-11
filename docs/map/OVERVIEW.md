@@ -5,18 +5,16 @@
 
 _No `trellis.json` — the project is not set up yet._
 
-62 tracked files, 11 of them code.
+7 project files, 0 of them code.
+
+_62 framework files (Trellis itself) are excluded — see `.claude/framework-paths.json`._
 
 ## Where things live
 
 | Area | Files | What it is |
 |---|---:|---|
 | `(root)` | 5 | Top-level config and docs |
-| `.claude` | 38 | The Claude layer — skills, commands, agents, hooks and scripts that make up Trellis itself. |
-| `.githooks` | 3 | Versioned hooks, activated by pointing git at this directory: |
 | `docs` | 2 | Specs, approved mockups, decision records, session handoffs, and the generated map. |
-| `setup` | 3 | Files staged until a project's stack is chosen, then copied to the repo root. |
-| `stacks` | 11 | Technology knowledge modules, loaded only when a project declares that stack in trellis.json. |
 
 ## Changing most
 
@@ -35,6 +33,6 @@ Last 30 days. Where the work is, and where regressions are most likely.
 
 ---
 
-Generated 2026-08-11 19:47 UTC from commit `904f4fa`.
+Generated 2026-08-11 20:02 UTC from commit `d9fccfa`.
 
 If this disagrees with the code, the code is right — regenerate with `.claude/scripts/build-map.py`.

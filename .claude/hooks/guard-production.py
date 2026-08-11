@@ -91,7 +91,7 @@ def main():
                     origin,
                     rule.get("id", "rule"),
                     rule.get("reason", "This command is not permitted."),
-                    sorted(candidates, key=len)[-1][:400],
+                    max(candidates, key=len)[:400],
                 )
             )
             return 2

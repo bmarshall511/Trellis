@@ -45,7 +45,7 @@ def load_json(path):
         with open(path) as fh:
             return json.load(fh)
     except Exception as exc:
-        fail("%s is not valid JSON: %s" % (os.path.relpath(path, ROOT), exc))
+        fail(f"{os.path.relpath(path, ROOT)} is not valid JSON: {exc}")
         return None
 
 
@@ -65,7 +65,7 @@ def listdir(path):
 
 
 # ---------------------------------------------------------------- json validity
-for dirpath, dirnames, filenames in os.walk(ROOT):
+for dirpath, _dirnames, filenames in os.walk(ROOT):
     if ".git" in dirpath or "node_modules" in dirpath:
         continue
     for name in filenames:
@@ -78,16 +78,16 @@ skills_dir = os.path.join(CLAUDE, "skills")
 for name in listdir(skills_dir):
     path = os.path.join(skills_dir, name, "SKILL.md")
     if not os.path.exists(path):
-        fail("skills/%s has no SKILL.md" % name)
+        fail(f"skills/{name} has no SKILL.md")
         continue
     meta = frontmatter(read(path))
     declared = meta.get("name", "")
     if declared != name:
-        fail("skills/%s declares name '%s' — must match the directory" % (name, declared))
+        fail(f"skills/{name} declares name '{declared}' — must match the directory")
     if not meta.get("description"):
-        fail("skills/%s has no description, so it will never trigger" % name)
+        fail(f"skills/{name} has no description, so it will never trigger")
     elif len(meta["description"]) < 40:
-        note("skills/%s has a very short description; it may trigger unreliably" % name)
+        note(f"skills/{name} has a very short description; it may trigger unreliably")
     skills[name] = meta
 
 if not skills:
@@ -102,9 +102,9 @@ for name in listdir(agents_dir):
     meta = frontmatter(read(os.path.join(agents_dir, name)))
     stem = name[:-3]
     if meta.get("name") != stem:
-        fail("agents/%s declares name '%s' — must match the filename" % (name, meta.get("name")))
+        fail("agents/{} declares name '{}' — must match the filename".format(name, meta.get("name")))
     if not meta.get("description"):
-        fail("agents/%s has no description" % name)
+        fail(f"agents/{name} has no description")
     agents[stem] = meta
 
 # ---------------------------------------------------------------- commands
@@ -116,21 +116,21 @@ if not command_files:
 for name in command_files:
     text = read(os.path.join(commands_dir, name))
     if not frontmatter(text).get("description"):
-        fail("commands/%s has no description" % name)
+        fail(f"commands/{name} has no description")
 
     # A command that names a skill which does not exist is silently a no-op.
     for referenced in re.findall(r"`([a-z][a-z0-9-]+)`\s+(?:and\s+`[a-z0-9-]+`\s+)?skills?\b", text):
         if referenced not in skills:
-            fail("commands/%s loads skill '%s', which does not exist" % (name, referenced))
+            fail(f"commands/{name} loads skill '{referenced}', which does not exist")
     for referenced in re.findall(r"[Ll]oad the `([a-z][a-z0-9-]+)`", text):
         if referenced not in skills:
-            fail("commands/%s loads skill '%s', which does not exist" % (name, referenced))
+            fail(f"commands/{name} loads skill '{referenced}', which does not exist")
     for referenced in re.findall(r"`([a-z][a-z0-9-]+)`\s+agent\b", text):
         if referenced not in agents:
-            fail("commands/%s uses agent '%s', which does not exist" % (name, referenced))
+            fail(f"commands/{name} uses agent '{referenced}', which does not exist")
     for referenced in re.findall(r"`?(\.claude/scripts/[a-z-]+\.py)`?", text):
         if not os.path.exists(os.path.join(ROOT, referenced)):
-            fail("commands/%s runs '%s', which does not exist" % (name, referenced))
+            fail(f"commands/{name} runs '{referenced}', which does not exist")
 
 # ---------------------------------------------------------------- settings & hooks
 settings = load_json(os.path.join(CLAUDE, "settings.json")) or {}
@@ -141,9 +141,9 @@ for event, groups in (settings.get("hooks") or {}).items():
             rel = command.replace("$CLAUDE_PROJECT_DIR/", "")
             path = os.path.join(ROOT, rel)
             if not os.path.exists(path):
-                fail("settings.json %s hook points at '%s', which does not exist" % (event, rel))
+                fail(f"settings.json {event} hook points at '{rel}', which does not exist")
             elif not os.access(path, os.X_OK):
-                fail("%s is not executable — the %s hook will fail silently" % (rel, event))
+                fail(f"{rel} is not executable — the {event} hook will fail silently")
 
 # ---------------------------------------------------------------- guards have tests
 cases_path = os.path.join(CLAUDE, "hooks/tests/guard-cases.json")
@@ -168,17 +168,16 @@ for guard_path in guard_files:
         pattern = rule.get("pattern")
         rule_id = rule.get("id", "?")
         if not pattern:
-            fail("%s rule '%s' has no pattern" % (os.path.relpath(guard_path, ROOT), rule_id))
+            fail(f"{os.path.relpath(guard_path, ROOT)} rule '{rule_id}' has no pattern")
             continue
         try:
             regex = re.compile(pattern, re.IGNORECASE)
         except re.error as exc:
-            fail("%s rule '%s' has an invalid regex: %s"
-                 % (os.path.relpath(guard_path, ROOT), rule_id, exc))
+            fail(f"{os.path.relpath(guard_path, ROOT)} rule '{rule_id}' has an invalid regex: {exc}")
             continue
         if not any(regex.search(command) for command in case_commands):
-            fail("guard rule '%s' (%s) has no test case — an untested guard is not a guard"
-                 % (rule_id, os.path.relpath(guard_path, ROOT)))
+            fail(f"guard rule '{rule_id}' ({os.path.relpath(guard_path, ROOT)}) has no test case "
+                 "— an untested guard is not a guard")
 
 # ---------------------------------------------------------------- stack modules
 for name in listdir(stacks_dir):
@@ -186,25 +185,25 @@ for name in listdir(stacks_dir):
     if not os.path.isdir(directory) or name.startswith("_"):
         continue
     if not os.path.exists(os.path.join(directory, "SKILL.md")):
-        fail("stacks/%s has no SKILL.md" % name)
+        fail(f"stacks/{name} has no SKILL.md")
     verified = os.path.join(directory, "VERIFIED")
     if not os.path.exists(verified):
-        fail("stacks/%s has no VERIFIED file — its currency is unknown" % name)
+        fail(f"stacks/{name} has no VERIFIED file — its currency is unknown")
     elif not re.search(r"\d{4}-\d{2}-\d{2}", read(verified)):
-        fail("stacks/%s VERIFIED has no date" % name)
+        fail(f"stacks/{name} VERIFIED has no date")
     extractor = os.path.join(directory, "extract-map.py")
     if os.path.exists(extractor) and not os.access(extractor, os.X_OK):
-        note("stacks/%s/extract-map.py is not executable" % name)
+        note(f"stacks/{name}/extract-map.py is not executable")
 
 # ---------------------------------------------------------------- docs scaffolding
 for required in ("docs/specs/_template.md", "trellis.schema.json", "README.md", "stacks/README.md"):
     if not os.path.exists(os.path.join(ROOT, required)):
-        fail("%s is missing" % required)
+        fail(f"{required} is missing")
 
 for area in ("docs", "stacks", "setup", ".claude"):
     path = os.path.join(ROOT, area)
     if os.path.isdir(path) and not os.path.exists(os.path.join(path, "PURPOSE")):
-        note("%s has no PURPOSE file, so the map cannot describe it" % area)
+        note(f"{area} has no PURPOSE file, so the map cannot describe it")
 
 # ---------------------------------------------------------------- guard suite runs
 try:
@@ -213,7 +212,7 @@ try:
     if result.returncode != 0:
         fail("guard test suite is failing:\n    " + result.stdout.strip().replace("\n", "\n    "))
 except Exception as exc:
-    fail("could not run the guard test suite: %s" % exc)
+    fail(f"could not run the guard test suite: {exc}")
 
 # ---------------------------------------------------------------- report
 print("Trellis integrity check")

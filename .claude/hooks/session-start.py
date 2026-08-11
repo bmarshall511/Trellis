@@ -45,8 +45,8 @@ def frontmatter(path):
         with open(path) as fh:
             if fh.readline().strip() != "---":
                 return fields
-            for line in fh:
-                line = line.rstrip("\n")
+            for raw in fh:
+                line = raw.rstrip("\n")
                 if line.strip() == "---":
                     break
                 if ":" in line and not line.startswith((" ", "\t", "#")):
@@ -63,8 +63,8 @@ def tripwires(config):
 
     # Git will not activate a repo's own hooks on clone -- that would be remote code execution. So
     # this is one command per clone, and it is the difference between the gates running and not.
-    if os.path.isdir(os.path.join(REPO_ROOT, ".githooks")):
-        if git("config", "core.hooksPath") != ".githooks":
+    if (os.path.isdir(os.path.join(REPO_ROOT, ".githooks"))
+            and git("config", "core.hooksPath") != ".githooks"):
             found.append(
                 "Git hooks are NOT active. Secret scanning and the gates will not run on commit. "
                 "Fix with: git config core.hooksPath .githooks"
@@ -74,8 +74,8 @@ def tripwires(config):
     for name in (".env", ".env.local", ".env.production"):
         if os.path.exists(os.path.join(REPO_ROOT, name)):
             found.append(
-                "%s exists in the repo. Confirm it is gitignored and holds no production "
-                "credentials — an agent's shell inherits this environment." % name
+                f"{name} exists in the repo. Confirm it is gitignored and holds no production "
+                "credentials — an agent's shell inherits this environment."
             )
 
     # Production write credentials must not be reachable from this machine at all.
@@ -83,15 +83,15 @@ def tripwires(config):
         value = os.environ.get(var, "")
         if value and not any(h in value for h in ("localhost", "127.0.0.1", "::1")):
             found.append(
-                "%s is set in this environment and does not point at localhost. Production write "
-                "credentials must not exist on the development machine." % var
+                f"{var} is set in this environment and does not point at localhost. Production write "
+                "credentials must not exist on the development machine."
             )
 
     # Untracked files that look like keys.
     for line in git("status", "--porcelain", "--untracked-files=all").splitlines():
         path = line[3:].strip()
         if path.endswith((".pem", ".key", ".p12", ".keystore")):
-            found.append("Untracked credential file: %s" % path)
+            found.append(f"Untracked credential file: {path}")
 
     if config and (config.get("production") or {}).get("readAccess"):
         found.append(
@@ -121,25 +121,25 @@ def main():
         active = [n for n in ("types", "lint", "test", "a11y", "perf") if gates.get(n)]
         absent = [n for n in ("types", "lint", "test", "a11y", "perf") if n in gates and not gates.get(n)]
 
-        lines.append("## %s" % config.get("name", "Trellis project"))
+        lines.append("## {}".format(config.get("name", "Trellis project")))
         if config.get("description"):
             lines.append("")
             lines.append(config["description"])
         lines.append("")
-        lines.append("- Type: **%s**%s" % (
+        lines.append("- Type: **{}**{}".format(
             config.get("type", "?"),
             "" if config.get("type") == "app" else "  (no mockups, no a11y/perf gates)",
         ))
         stacks = config.get("stacks") or []
-        lines.append("- Stacks: %s" % (", ".join("`%s`" % s for s in stacks) if stacks else "none"))
+        lines.append("- Stacks: %s" % (", ".join(f"`{s}`" for s in stacks) if stacks else "none"))
         lines.append("- Gates active: %s" % (", ".join(active) if active else "none"))
         if absent:
-            lines.append("- Gates declared absent: %s" % ", ".join(absent))
+            lines.append("- Gates declared absent: {}".format(", ".join(absent)))
 
         for stack in stacks:
             path = os.path.join(REPO_ROOT, "stacks", stack, "SKILL.md")
             if not os.path.exists(path):
-                lines.append("- ⚠ `stacks/%s/` is declared but missing." % stack)
+                lines.append(f"- ⚠ `stacks/{stack}/` is declared but missing.")
 
     # Specs needing a human, and what is ready to build.
     specs_dir = os.path.join(REPO_ROOT, "docs", "specs")
@@ -150,31 +150,37 @@ def main():
                 continue
             meta = frontmatter(os.path.join(specs_dir, name))
             status, title = meta.get("status", ""), meta.get("title", name)
-            entry = "%s — %s" % (meta.get("id", name), title)
+            entry = "{} — {}".format(meta.get("id", name), title)
             if status in ("blocked", "clarifying"):
-                needs.append("%s (%s)" % (entry, status))
+                needs.append(f"{entry} ({status})")
             elif status == "ready":
                 ready.append(entry)
         if needs:
             lines.append("")
-            lines.append("**Specs needing you:** %s" % "; ".join(needs[:MAX_SPECS_LISTED]))
+            lines.append("**Specs needing you:** {}".format("; ".join(needs[:MAX_SPECS_LISTED])))
         if ready:
             lines.append("")
-            lines.append("**Ready to build:** %s" % "; ".join(ready[:MAX_SPECS_LISTED]))
+            lines.append("**Ready to build:** {}".format("; ".join(ready[:MAX_SPECS_LISTED])))
 
-    # Uncommitted work from a previous session is worth knowing about immediately.
+    # Uncommitted work from a previous session is worth knowing about immediately -- but on a fresh
+    # clone everything is untracked and there is no branch yet, which is noise at exactly the moment
+    # the reader needs clarity.
+    has_commits = bool(git("rev-parse", "--verify", "HEAD"))
     dirty = git("status", "--porcelain")
-    if dirty:
+    if not has_commits:
         lines.append("")
-        lines.append("**Uncommitted changes present** (%d files). Branch: `%s`."
-                     % (len(dirty.splitlines()), git("rev-parse", "--abbrev-ref", "HEAD") or "?"))
+        lines.append("Fresh repository — no commits yet.")
+    elif dirty:
+        branch = git("rev-parse", "--abbrev-ref", "HEAD") or "detached"
+        lines.append("")
+        lines.append("**Uncommitted changes** (%d files) on `%s`." % (len(dirty.splitlines()), branch))
 
     warnings = tripwires(config)
     if warnings:
         lines.append("")
         lines.append("### ⚠ Check before proceeding")
         for warning in warnings:
-            lines.append("- %s" % warning)
+            lines.append(f"- {warning}")
 
     handoff = os.path.join(REPO_ROOT, "docs", "handoff", "LATEST.md")
     if os.path.exists(handoff):

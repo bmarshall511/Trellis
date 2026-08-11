@@ -9,10 +9,8 @@ This is an audit, not a build. Change nothing. Report what is true.
 
 For each spec:
 
-1. **Criterion coverage.** For every acceptance criterion, find the test that would fail if it broke.
-   Produce the mapping explicitly:
-
-   | # | Criterion | Test | Verdict |
+1. **Criterion coverage.** Run `.claude/scripts/spec-coverage.py <id>`, which produces the mapping.
+   Then judge each covered criterion by hand:
 
    A criterion with no test is a failure. A test that exists but would still pass if the behaviour broke
    is also a failure — say so rather than counting it.

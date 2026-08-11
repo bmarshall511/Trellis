@@ -1,0 +1,3 @@
+# Trellis: exclude framework-owned paths. See .claude/framework-paths.json
+# Copy to the repo root if the project uses ruff.
+exclude = [".claude", ".githooks", "setup", "stacks"]

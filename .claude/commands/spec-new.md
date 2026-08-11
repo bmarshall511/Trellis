@@ -14,8 +14,8 @@ Load the `spec-authoring` skill and follow it.
    Do not move on while anything is unresolved — this is the one phase where interrogation is the job.
 5. Fill the spec in as answers arrive. Keep `Open questions` populated with anything outstanding so the
    state is always visible.
-6. When `Open questions` is empty, run the readiness checklist from the skill **explicitly**, line by
-   line, and show the user the result.
+6. When `Open questions` is empty, run `.claude/scripts/spec-lint.py <id>` and show the user the result.
+   The checklist is enforced by that script, not by memory.
 7. Set status to `ready` only if every line passes; otherwise leave it `clarifying` and say what's missing.
 8. If `surfaces` includes `ui`, tell the user a mockup is required before this can be built, and offer
    to run `/mockup <id>`.

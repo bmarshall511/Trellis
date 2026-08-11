@@ -56,20 +56,22 @@ def write_state(state):
 def run_gate(name, command):
     """Return (ok, combined_output). A gate must exit non-zero on failure."""
     try:
-        proc = subprocess.run(
+        # shell=True is the design: gate commands come from trellis.json as shell strings so a
+        # project can express any pipeline. They are the project's own config, not external input.
+        proc = subprocess.run(  # noqa: S602
             command, shell=True, cwd=REPO_ROOT, capture_output=True,
             text=True, timeout=TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:
         return False, "gate '%s' exceeded %ds and was killed" % (name, TIMEOUT_SECONDS)
     except Exception as exc:
-        return False, "gate '%s' could not run: %s" % (name, exc)
+        return False, f"gate '{name}' could not run: {exc}"
     if proc.returncode == 0:
         return True, ""
     return False, ((proc.stdout or "") + (proc.stderr or "")).strip()
 
 
-def main():
+def main():  # noqa: PLR0911 — each early return is a distinct "do not block" condition
     try:
         event = json.load(sys.stdin)
     except Exception:

@@ -45,6 +45,22 @@ CODE_EXTENSIONS = {
     ".java", ".kt", ".swift", ".php", ".cs", ".vue", ".svelte", ".sql", ".sh",
 }
 
+FRAMEWORK_PATHS_FILE = ".claude/framework-paths.json"
+
+
+def framework_owned():
+    """Paths belonging to Trellis rather than the project. Single source of truth."""
+    try:
+        with open(os.path.join(REPO_ROOT, FRAMEWORK_PATHS_FILE)) as fh:
+            return [p.rstrip("/") for p in json.load(fh).get("owned", [])]
+    except Exception:
+        return [".claude", ".githooks", "stacks", "setup"]
+
+
+def is_framework(rel_path, owned):
+    return any(rel_path == o or rel_path.startswith(o + "/") for o in owned)
+
+
 MANIFESTS = [
     ("package.json", "node"), ("pyproject.toml", "python"), ("requirements.txt", "python"),
     ("go.mod", "go"), ("Cargo.toml", "rust"), ("Gemfile", "ruby"), ("composer.json", "php"),
@@ -94,9 +110,10 @@ def frontmatter(path):
         with open(path) as fh:
             if fh.readline().strip() != "---":
                 return fields
-            for line in fh:
-                if line.strip() == "---":
+            for raw in fh:
+                if raw.strip() == "---":
                     break
+                line = raw
                 if ":" in line and not line.startswith((" ", "\t", "#")):
                     key, _, value = line.partition(":")
                     fields[key.strip()] = value.strip().strip("'\"")
@@ -117,8 +134,8 @@ def directory_purpose(rel_dir):
             continue
         try:
             with open(path) as fh:
-                for line in fh:
-                    line = line.strip()
+                for raw in fh:
+                    line = raw.strip()
                     if line and not line.startswith("#"):
                         return line[:160]
         except Exception:
@@ -173,7 +190,13 @@ def stack_extractors(config):
 
 def build():
     config = load_json("trellis.json")
-    files = tracked_files()
+    all_files = tracked_files()
+    owned = framework_owned()
+
+    # The map exists to describe YOUR project. Trellis ships ~60 of its own files; counting them makes
+    # the map mostly about the framework, which is the opposite of saving anyone a read.
+    files = [f for f in all_files if not is_framework(f, owned)]
+    framework_count = len(all_files) - len(files)
     code = [f for f in files if os.path.splitext(f)[1] in CODE_EXTENSIONS]
     areas = group_by_area(files)
 
@@ -185,16 +208,20 @@ def build():
     out.append("")
 
     if config:
-        out.append("**%s** — %s" % (config.get("name", "?"), config.get("description", "")))
+        out.append("**{}** — {}".format(config.get("name", "?"), config.get("description", "")))
         out.append("")
-        out.append("Type `%s` · stacks: %s" % (
+        out.append("Type `{}` · stacks: {}".format(
             config.get("type", "?"),
-            ", ".join("`%s`" % s for s in (config.get("stacks") or [])) or "none",
+            ", ".join(f"`{s}`" for s in (config.get("stacks") or [])) or "none",
         ))
     else:
         out.append("_No `trellis.json` — the project is not set up yet._")
     out.append("")
-    out.append("%d tracked files, %d of them code." % (len(files), len(code)))
+    out.append("%d project files, %d of them code." % (len(files), len(code)))
+    if framework_count:
+        out.append("")
+        out.append("_%d framework files (Trellis itself) are excluded — see `.claude/framework-paths.json`._"
+                   % framework_count)
     out.append("")
 
     # ---- where things live -------------------------------------------------
@@ -208,8 +235,8 @@ def build():
     out.append("")
     missing = [a for a in sorted(areas) if a != "(root)" and not directory_purpose(a)]
     if missing:
-        out.append("> Undescribed: %s. Add a `PURPOSE` file to each so this map means something."
-                   % ", ".join("`%s`" % m for m in missing))
+        out.append("> Undescribed: {}. Add a `PURPOSE` file to each so this map means something."
+                   .format(", ".join(f"`{m}`" for m in missing)))
         out.append("")
 
     # ---- specs -------------------------------------------------------------
@@ -223,7 +250,7 @@ def build():
         out.append("| Spec | Title | Status |")
         out.append("|---|---|---|")
         for sid, title, status, path in specs:
-            out.append("| [%s](/%s) | %s | %s |" % (sid, path, title, status))
+            out.append(f"| [{sid}](/{path}) | {title} | {status} |")
         out.append("")
 
     # ---- dependencies ------------------------------------------------------
@@ -239,15 +266,15 @@ def build():
             out.append("From `%s` — %d runtime, %d dev." % (manifest, len(runtime), len(dev)))
             if runtime:
                 out.append("")
-                out.append("Runtime: %s" % ", ".join("`%s`" % d for d in runtime))
+                out.append("Runtime: {}".format(", ".join(f"`{d}`" for d in runtime)))
         else:
-            out.append("Declared in `%s`." % manifest)
+            out.append(f"Declared in `{manifest}`.")
         out.append("")
         break
 
     # ---- stack-contributed sections ---------------------------------------
     for stack, section in stack_extractors(config):
-        out.append("## %s" % stack)
+        out.append(f"## {stack}")
         out.append("")
         out.append(section)
         out.append("")
@@ -256,10 +283,10 @@ def build():
     churn = git("log", "--since=30.days", "--name-only", "--pretty=format:")
     if churn:
         counts = {}
-        for line in churn.splitlines():
-            line = line.strip()
-            if line and os.path.splitext(line)[1] in CODE_EXTENSIONS:
-                counts[line] = counts.get(line, 0) + 1
+        for raw in churn.splitlines():
+            path = raw.strip()
+            if path and os.path.splitext(path)[1] in CODE_EXTENSIONS:
+                counts[path] = counts.get(path, 0) + 1
         hot = sorted(counts.items(), key=lambda kv: -kv[1])[:10]
         if hot:
             out.append("## Changing most")
@@ -272,8 +299,8 @@ def build():
 
     out.append("---")
     out.append("")
-    out.append("Generated %s from commit `%s`."
-               % (datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+    out.append("Generated {} from commit `{}`."
+               .format(datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
                   git("rev-parse", "--short", "HEAD", default="none")))
     out.append("")
     out.append("If this disagrees with the code, the code is right — regenerate with "
@@ -284,7 +311,7 @@ def build():
 
 def content_signature(text):
     """Everything except the generated-at line, so --check does not trip on the timestamp alone."""
-    stable = [l for l in text.splitlines() if not l.startswith("Generated ")]
+    stable = [line for line in text.splitlines() if not line.startswith("Generated ")]
     return hashlib.sha256("\n".join(stable).encode()).hexdigest()
 
 

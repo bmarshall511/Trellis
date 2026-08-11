@@ -30,12 +30,31 @@ if [ -x .claude/scripts/check-integrity.py ] && [ -d .claude/skills ]; then
   }
 fi
 
-# The map is generated from the tracked file set, so it goes stale whenever files are added or removed.
-# This has caught itself twice; enforce it rather than relying on remembering.
+# The map is derived from the tracked file set, so it goes stale whenever a file is added or removed.
+# Failing here just makes every such commit a three-step dance, so regenerate and stage it instead --
+# it is a generated file, and there is nothing for a human to decide.
 if [ -x .claude/scripts/build-map.py ] && [ -d docs/map ]; then
-  .claude/scripts/build-map.py --check >/dev/null || {
-    echo "docs/map/OVERVIEW.md is out of date." >&2
-    echo "  Run: .claude/scripts/build-map.py && git add docs/map/OVERVIEW.md" >&2
+  if ! .claude/scripts/build-map.py --check >/dev/null 2>&1; then
+    .claude/scripts/build-map.py >/dev/null && git add docs/map/OVERVIEW.md \
+      && echo "map: regenerated and staged"
+  fi
+fi
+
+# Specs claiming to be implementable must pass the readiness checklist. This is the mechanism behind
+# "never assumes" -- prose in a skill is not a control.
+if [ -x .claude/scripts/spec-lint.py ] && [ -d docs/specs ]; then
+  .claude/scripts/spec-lint.py --ready-only >/dev/null || {
+    echo "A spec claiming ready/done fails the readiness checklist." >&2
+    echo "  Run: .claude/scripts/spec-lint.py --ready-only" >&2
+    failed=1
+  }
+fi
+
+# A spec marked done whose criteria have no tests is the worst kind of wrong: nobody looks again.
+if [ -x .claude/scripts/spec-coverage.py ] && [ -d docs/specs ]; then
+  .claude/scripts/spec-coverage.py >/dev/null 2>&1 || {
+    echo "A spec marked done or verifying has uncovered acceptance criteria." >&2
+    echo "  Run: .claude/scripts/spec-coverage.py" >&2
     failed=1
   }
 fi

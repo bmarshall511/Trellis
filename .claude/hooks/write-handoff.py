@@ -88,8 +88,8 @@ def main():
     doc = []
     doc.append("# Session handoff")
     doc.append("")
-    doc.append("Written automatically at %s, just before context was compacted."
-               % now.strftime("%Y-%m-%d %H:%M UTC"))
+    doc.append("Written automatically at {}, just before context was compacted."
+               .format(now.strftime("%Y-%m-%d %H:%M UTC")))
     doc.append("Trigger: %s." % ("manual /compact" if event.get("trigger") == "manual" else "context limit"))
     doc.append("")
     doc.append("---")
@@ -121,11 +121,11 @@ def main():
     doc.append("## State at handoff")
     doc.append("")
     if config:
-        doc.append("**Project:** %s (%s)" % (config.get("name", "?"), config.get("type", "?")))
+        doc.append("**Project:** {} ({})".format(config.get("name", "?"), config.get("type", "?")))
         stacks = config.get("stacks") or []
         doc.append("**Stacks:** %s" % (", ".join(stacks) if stacks else "none"))
         doc.append("")
-    doc.append("**Branch:** `%s`" % branch)
+    doc.append(f"**Branch:** `{branch}`")
     doc.append("")
 
     if specs:
@@ -134,14 +134,14 @@ def main():
         doc.append("| Spec | Title | Status | File |")
         doc.append("|---|---|---|---|")
         for sid, title, sstatus, path in specs:
-            doc.append("| %s | %s | %s | `%s` |" % (sid, title, sstatus, path))
+            doc.append(f"| {sid} | {title} | {sstatus} | `{path}` |")
         doc.append("")
 
     if changed:
         doc.append("**Uncommitted files (%d):**" % len(changed))
         doc.append("")
         for path in changed[:40]:
-            doc.append("- `%s`" % path)
+            doc.append(f"- `{path}`")
         if len(changed) > 40:
             doc.append("- _...and %d more_" % (len(changed) - 40))
         doc.append("")
@@ -168,9 +168,9 @@ def main():
     doc.append("Read docs/handoff/LATEST.md first — it has the full state of where I left off.")
     doc.append("Then read the specs listed there as in-flight.")
     doc.append("")
-    doc.append("Branch: %s" % branch)
+    doc.append(f"Branch: {branch}")
     if specs:
-        doc.append("Active spec: %s — %s (%s)" % (specs[0][0], specs[0][1], specs[0][2]))
+        doc.append(f"Active spec: {specs[0][0]} — {specs[0][1]} ({specs[0][2]})")
     doc.append("")
     doc.append("Do not start anything new until you have confirmed with me what state the")
     doc.append("in-flight work is actually in.")
@@ -179,14 +179,14 @@ def main():
 
     try:
         os.makedirs(HANDOFF_DIR, exist_ok=True)
-        stamped = os.path.join(HANDOFF_DIR, "handoff-%s.md" % now.strftime("%Y%m%d-%H%M%S"))
+        stamped = os.path.join(HANDOFF_DIR, "handoff-{}.md".format(now.strftime("%Y%m%d-%H%M%S")))
         with open(stamped, "w") as fh:
             fh.write("\n".join(doc))
         latest = os.path.join(HANDOFF_DIR, "LATEST.md")
         with open(latest, "w") as fh:
             fh.write("\n".join(doc))
     except Exception as exc:
-        sys.stderr.write("Trellis: could not write handoff: %s\n" % exc)
+        sys.stderr.write(f"Trellis: could not write handoff: {exc}\n")
         return 0
 
     # PreCompact stdout reaches the agent while it still has full context — the only

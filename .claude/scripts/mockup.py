@@ -92,10 +92,10 @@ def signature(spec_id):
 def approve(spec_id):
     directory, files = mockup_files(spec_id)
     if directory is None:
-        print("No mockup at docs/mockups/%s/" % spec_id, file=sys.stderr)
+        print(f"No mockup at docs/mockups/{spec_id}/", file=sys.stderr)
         return 1
     if not files:
-        print("docs/mockups/%s/ has no reviewable files." % spec_id, file=sys.stderr)
+        print(f"docs/mockups/{spec_id}/ has no reviewable files.", file=sys.stderr)
         return 1
 
     sig = signature(spec_id)
@@ -118,16 +118,16 @@ def approve(spec_id):
 
 
 def verify(spec_id, quiet=False):
-    directory, files = mockup_files(spec_id)
+    directory, _files = mockup_files(spec_id)
     if directory is None:
         if not quiet:
-            print("MISSING   %s — no mockup directory" % spec_id)
+            print(f"MISSING   {spec_id} — no mockup directory")
         return 1
 
     path = os.path.join(directory, APPROVAL_FILE)
     if not os.path.exists(path):
         if not quiet:
-            print("UNAPPROVED %s — no approval on record" % spec_id)
+            print(f"UNAPPROVED {spec_id} — no approval on record")
         return 1
 
     try:
@@ -135,7 +135,7 @@ def verify(spec_id, quiet=False):
             record = json.load(fh)
     except Exception:
         if not quiet:
-            print("CORRUPT   %s — approval file is unreadable" % spec_id)
+            print(f"CORRUPT   {spec_id} — approval file is unreadable")
         return 1
 
     current = signature(spec_id)
@@ -143,14 +143,14 @@ def verify(spec_id, quiet=False):
 
     if current["artifacts"] != recorded.get("artifacts"):
         if not quiet:
-            print("STALE     %s — mockup changed since approval on %s"
-                  % (spec_id, record.get("approvedAt", "?")))
-            print("          Approval is void. Re-review, then run: mockup.py approve %s" % spec_id)
+            print("STALE     {} — mockup changed since approval on {}"
+                  .format(spec_id, record.get("approvedAt", "?")))
+            print(f"          Approval is void. Re-review, then run: mockup.py approve {spec_id}")
         return 1
 
     if recorded.get("tokens") is not None and current["tokens"] != recorded.get("tokens"):
         if not quiet:
-            print("STALE     %s — design tokens changed since approval" % spec_id)
+            print(f"STALE     {spec_id} — design tokens changed since approval")
             print("          What was approved no longer renders the same way. Re-review.")
         return 1
 
@@ -186,10 +186,10 @@ def main():
         return status()
     if command in ("approve", "verify"):
         if len(sys.argv) < 3:
-            print("Usage: mockup.py %s <spec-id>" % command, file=sys.stderr)
+            print(f"Usage: mockup.py {command} <spec-id>", file=sys.stderr)
             return 2
         return approve(sys.argv[2]) if command == "approve" else verify(sys.argv[2])
-    print("Unknown command: %s" % command, file=sys.stderr)
+    print(f"Unknown command: {command}", file=sys.stderr)
     return 2
 
 

@@ -11,7 +11,9 @@ interrogate; implementation runs silent.
 
 ## Readiness checklist — verify before declaring a spec ready
 
-Run through this literally. A spec is `ready` only when every line passes.
+**Run `.claude/scripts/spec-lint.py <id>`.** It enforces every mechanical check below, and the
+pre-commit hook runs it too, so a failing spec cannot reach `ready`. The list is here so you know what
+it checks and why — not so you can check it by eye.
 
 - [ ] `Open questions` is empty
 - [ ] Every acceptance criterion is in EARS form and observable from outside the system

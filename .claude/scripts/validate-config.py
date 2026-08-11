@@ -36,7 +36,7 @@ def validate(config):
     # ---- required top level ------------------------------------------------
     for key in ("name", "type", "gates"):
         if key not in config:
-            error("missing required field: %s" % key)
+            error(f"missing required field: {key}")
 
     if "name" in config and not str(config["name"]).strip():
         error("name is empty")
@@ -45,7 +45,7 @@ def validate(config):
 
     project_type = config.get("type")
     if project_type is not None and project_type not in TYPES:
-        error("type must be one of %s, got %r" % (", ".join(TYPES), project_type))
+        error("type must be one of {}, got {!r}".format(", ".join(TYPES), project_type))
 
     # ---- stacks ------------------------------------------------------------
     stacks = config.get("stacks", [])
@@ -54,23 +54,23 @@ def validate(config):
         stacks = []
     for stack in stacks:
         if not isinstance(stack, str) or not STACK_NAME.match(stack):
-            error("invalid stack name %r — lowercase letters, digits and hyphens only" % stack)
+            error(f"invalid stack name {stack!r} — lowercase letters, digits and hyphens only")
             continue
         directory = os.path.join(ROOT, "stacks", stack)
         if not os.path.isdir(directory):
-            error("stack %r is declared but stacks/%s/ does not exist" % (stack, stack))
+            error(f"stack {stack!r} is declared but stacks/{stack}/ does not exist")
             continue
         if not os.path.exists(os.path.join(directory, "SKILL.md")):
-            error("stacks/%s has no SKILL.md" % stack)
+            error(f"stacks/{stack} has no SKILL.md")
         verified = os.path.join(directory, "VERIFIED")
         if not os.path.exists(verified):
-            warn("stacks/%s has no VERIFIED file — its currency is unknown" % stack)
+            warn(f"stacks/{stack} has no VERIFIED file — its currency is unknown")
         else:
             with open(verified) as fh:
                 text = fh.read()
             match = re.search(r"(\d{4})-(\d{2})-(\d{2})", text)
             if not match:
-                warn("stacks/%s VERIFIED has no date" % stack)
+                warn(f"stacks/{stack} VERIFIED has no date")
 
     # ---- gates -------------------------------------------------------------
     gates = config.get("gates")
@@ -81,22 +81,22 @@ def validate(config):
     else:
         for name in GATES:
             if name not in gates:
-                error("gates.%s is missing. Declare it as null if it does not apply — "
-                      "absence must be a decision, not an oversight." % name)
+                error(f"gates.{name} is missing. Declare it as null if it does not apply — "
+                      "absence must be a decision, not an oversight.")
             else:
                 value = gates[name]
                 if value is not None and (not isinstance(value, str) or not value.strip()):
-                    error("gates.%s must be a non-empty command string or null" % name)
+                    error(f"gates.{name} must be a non-empty command string or null")
         for name in gates:
             if name not in GATES:
-                error("unknown gate %r" % name)
+                error(f"unknown gate {name!r}")
 
         # A user interface cannot opt out of accessibility or performance.
         if project_type == "app":
             for name in UI_REQUIRED_GATES:
                 if not gates.get(name):
-                    error("type is 'app', so gates.%s must be a real command — "
-                          "a project with a user interface cannot declare it absent." % name)
+                    error(f"type is 'app', so gates.{name} must be a real command — "
+                          "a project with a user interface cannot declare it absent.")
 
         if not any(gates.get(n) for n in GATES):
             warn("no gates are active, so nothing is verified before work is called done")
@@ -152,7 +152,7 @@ def validate(config):
 def main():
     path = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "trellis.json")
     if not os.path.exists(path):
-        print("No trellis.json at %s" % os.path.relpath(path, ROOT))
+        print(f"No trellis.json at {os.path.relpath(path, ROOT)}")
         print("Copy setup/trellis.json to the repo root once the project's stack is chosen.")
         return 0
 
@@ -160,7 +160,7 @@ def main():
         with open(path) as fh:
             config = json.load(fh)
     except Exception as exc:
-        print("trellis.json is not valid JSON: %s" % exc, file=sys.stderr)
+        print(f"trellis.json is not valid JSON: {exc}", file=sys.stderr)
         return 1
 
     config = {k: v for k, v in config.items() if not k.startswith("$")}

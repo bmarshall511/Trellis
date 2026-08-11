@@ -1,0 +1,32 @@
+# Trellis's own lint config. This lints Trellis itself — it is NOT what a project downstream should
+# use. Projects copy setup/ruff.toml, which excludes framework-owned paths instead.
+line-length = 110
+target-version = "py39"
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "S", "BLE", "PL", "RUF"]
+
+ignore = [
+  # Guards, hooks and generators must NEVER crash. A hook that raises blocks the agent's turn on an
+  # unrelated failure; a scanner that raises on one odd file stops scanning the rest. Catching broadly
+  # and degrading is the correct behaviour here, not a defect.
+  "BLE001",   # blind except — deliberate, see above
+  "S110",     # try/except/pass — deliberate, same reason
+  "S112",     # try/except/continue — deliberate, same reason
+  "PLW1510",  # subprocess without check= — we inspect returncode ourselves, by design
+  "SIM115",   # open() without context manager — false positive on our chunked readers
+  "PLR2004",  # magic values — thresholds read better inline than as constants
+  "PLR0912",  # too many branches — validators are inherently branchy
+  "PLR0915",  # too many statements — same
+  "S404",     # importing subprocess is the point
+  "S603",     # subprocess call — every call site is a fixed argv list, never a shell string
+  "S607",     # partial executable path — git/python3 come from PATH by design
+  # Convention: f-strings for short interpolations, %-format for the multi-line message blocks that
+  # make up most user-facing output here. Those read better as one string with the values grouped at
+  # the end, and rewriting 30 of them risks changing text that tests and users depend on.
+  "UP031",
+]
+
+[lint.per-file-ignores]
+# The scanner and its fixtures necessarily contain credential-shaped strings.
+".claude/scripts/scan-secrets.py" = ["S105", "S106"]

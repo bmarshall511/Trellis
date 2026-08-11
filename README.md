@@ -155,6 +155,8 @@ production guard in this repo allowed everything through, and only a test caught
 .claude/hooks/tests/run.py                   # 51 production-guard cases
 .claude/scripts/tests/run-secret-tests.py    # 22 secret-scanner cases
 .claude/scripts/check-integrity.py           # cross-references resolve
+.claude/scripts/spec-lint.py                 # specs meet the readiness checklist
+.claude/scripts/spec-coverage.py             # every criterion has a test
 .claude/scripts/build-map.py --check         # map is current
 ```
 
@@ -163,8 +165,13 @@ command loading a renamed skill is silently a no-op, and nothing about it looks 
 
 ## Status
 
-Early. The core works and is tested. What hasn't happened yet is enough real use to know which of these
-standards genuinely change an agent's output and which merely feel right.
+Early, but no longer untested. Trellis has been used to build a real (small) tool end to end — spec
+interview, twelve acceptance criteria, implementation, gates, commit. That run found eight defects in
+Trellis itself, all since fixed. The most useful thing it proved: the verify gate genuinely refused to
+let the work be called done while lint was failing.
+
+What still hasn't happened is use at any scale, or on anything with a user interface — so the mockup
+workflow and the accessibility standards remain well-reasoned but unproven.
 
 Stack modules are the natural contribution: self-contained, they don't touch the core, and their value is
 entirely in being current.

@@ -12,7 +12,7 @@ Load the `spec-authoring` and `spec-implementation` skills.
 
 1. Read `trellis.json` and load every module named in `stacks/`.
 2. Read the spec in full. Read its mockup if it has one.
-3. Re-run the readiness checklist. **If it fails, stop and report — do not implement an unready spec.**
+3. Run `.claude/scripts/spec-lint.py <id>`. **If it fails, stop and report — do not implement an unready spec.**
 4. Verify the approved mockup still matches its recorded hash. If it doesn't, approval is revoked; stop.
 5. Set status to `building`.
 
@@ -37,7 +37,7 @@ and write `## Blocked` with the failing output.
 
 Then verify the contract itself:
 
-- [ ] Every acceptance criterion maps to a named test — list them, criterion by criterion
+- [ ] `.claude/scripts/spec-coverage.py <id>` shows every criterion covered
 - [ ] All gates green
 - [ ] If `surfaces` includes `ui`: the implementation matches the approved mockup
 - [ ] Nothing outside the spec's scope was changed

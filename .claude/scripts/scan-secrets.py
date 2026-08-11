@@ -44,8 +44,8 @@ PATTERNS = [
     ("Database URL with password",
      r"\b(postgres(ql)?|mysql|mongodb(\+srv)?|redis|amqp)://[^:@\s/]+:[^@\s/]{3,}@"),
     ("Generic assigned secret",
-     r"(?i)\b(api[_-]?key|secret|password|passwd|token|credential)\b\s*[:=]\s*"
-     r"['\"][A-Za-z0-9/+_=-]{16,}['\"]"),
+     (r"(?i)\b(api[_-]?key|secret|password|passwd|token|credential)\b\s*[:=]\s*"
+     r"['\"][A-Za-z0-9/+_=-]{16,}['\"]")),
 ]
 
 COMPILED = [(name, re.compile(pattern)) for name, pattern in PATTERNS]
@@ -143,7 +143,7 @@ def scan_file(rel_path):
     try:
         if os.path.getsize(full) > MAX_BYTES:
             return []
-        with open(full, "r", encoding="utf-8", errors="ignore") as fh:
+        with open(full, encoding="utf-8", errors="ignore") as fh:
             content = fh.read()
     except Exception:
         return []
@@ -163,7 +163,7 @@ def scan_file(rel_path):
         else:
             name = decoded_secret(line)
             if name:
-                findings.append((number, "%s (base64-encoded)" % name, "<encoded>"))
+                findings.append((number, f"{name} (base64-encoded)", "<encoded>"))
                 continue
             for value in re.findall(r"['\"]([A-Za-z0-9/+_=-]{24,})['\"]", line):
                 if looks_random(value):
@@ -175,7 +175,7 @@ def scan_file(rel_path):
 def redact(value):
     if len(value) <= 12:
         return value[:2] + "…"
-    return "%s…%s" % (value[:6], value[-4:])
+    return f"{value[:6]}…{value[-4:]}"
 
 
 def main():
@@ -197,7 +197,7 @@ def main():
                 print("Possible credentials found — commit blocked.\n", file=sys.stderr)
             total += 1
             print("  %s:%d" % (rel_path, number), file=sys.stderr)
-            print("    %s: %s" % (name, redact(value)), file=sys.stderr)
+            print(f"    {name}: {redact(value)}", file=sys.stderr)
 
     if total:
         print(
@@ -210,7 +210,7 @@ def main():
         )
         return 1
 
-    print("secrets: clean (%s)" % scope)
+    print(f"secrets: clean ({scope})")
     return 0
 
 

@@ -1,0 +1,3 @@
+# Trellis: exclude framework-owned paths. See .claude/framework-paths.json
+[flake8]
+exclude = .claude,.githooks,setup,stacks,.git,__pycache__
