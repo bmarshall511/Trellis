@@ -1,0 +1,27 @@
+{
+  "$comment": "Copy to the repo root as trellis.json when a project's stack is chosen. Validate with .claude/scripts/validate-config.py. Schema: trellis.schema.json",
+
+  "name": "CHANGE ME",
+  "description": "One sentence on what this project is for.",
+  "type": "app",
+  "stacks": [],
+
+  "gates": {
+    "types": null,
+    "lint": null,
+    "test": null,
+    "a11y": null,
+    "perf": null
+  },
+
+  "standards": {
+    "accessibility": "AA",
+    "specMaxMinutes": 90
+  },
+
+  "autonomy": {
+    "enabled": false,
+    "maxRepairAttempts": 2,
+    "onBlocked": "halt"
+  }
+}

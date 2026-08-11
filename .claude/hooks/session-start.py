@@ -61,6 +61,15 @@ def tripwires(config):
     """Conditions that should stop a session being treated as normal."""
     found = []
 
+    # Git will not activate a repo's own hooks on clone -- that would be remote code execution. So
+    # this is one command per clone, and it is the difference between the gates running and not.
+    if os.path.isdir(os.path.join(REPO_ROOT, ".githooks")):
+        if git("config", "core.hooksPath") != ".githooks":
+            found.append(
+                "Git hooks are NOT active. Secret scanning and the gates will not run on commit. "
+                "Fix with: git config core.hooksPath .githooks"
+            )
+
     # Secrets that would be readable by anything running here.
     for name in (".env", ".env.local", ".env.production"):
         if os.path.exists(os.path.join(REPO_ROOT, name)):

@@ -11,7 +11,14 @@ actually needs.
 
 ## Using it
 
-Download this repo. Open Claude. Describe what you want to build.
+Download this repo, activate its git hooks, then open Claude and describe what you want to build.
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Git will not do that automatically on clone — a repo that installed its own hooks on clone would be a
+remote code execution vector. Trellis warns at session start if it has not been run.
 
 ```
 claude
@@ -33,6 +40,7 @@ docs/mockups/       approved designs, kept for reference
 docs/map/           auto-generated overview so the agent doesn't re-read the codebase
 stacks/             knowledge modules, loaded only for the technologies a project uses
 setup/              config files staged until a project's stack is chosen
+.githooks/          secret scanning on commit, gates on push
 trellis.json        what this project is and what it's built with
 ```
 

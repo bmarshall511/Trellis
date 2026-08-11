@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Trellis pre-push. Runs the gates the project declares in trellis.json.
+#
+# Later than pre-commit so slow suites do not tax every commit, but before anything leaves the machine.
+set -uo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT" || exit 0
+
+[ -f trellis.json ] || exit 0   # no project declared yet, nothing to run
+
+read -r -d '' PY <<'PYEOF'
+import json, subprocess, sys
+try:
+    gates = (json.load(open("trellis.json")).get("gates") or {})
+except Exception as exc:
+    print("trellis.json is unreadable: %s" % exc, file=sys.stderr); sys.exit(1)
+order = ["types", "lint", "test", "a11y", "perf"]
+declared = [(n, gates[n]) for n in order if gates.get(n)]
+if not declared:
+    print("no gates declared"); sys.exit(0)
+for name, command in declared:
+    print("  %s: %s" % (name, command))
+    result = subprocess.run(command, shell=True)
+    if result.returncode != 0:
+        print("\n'%s' failed. Push blocked." % name, file=sys.stderr)
+        sys.exit(1)
+print("all gates green")
+PYEOF
+python3 -c "$PY"
