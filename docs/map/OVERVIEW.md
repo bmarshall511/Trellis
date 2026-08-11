@@ -5,33 +5,36 @@
 
 _No `trellis.json` — the project is not set up yet._
 
-53 tracked files, 8 of them code.
+61 tracked files, 11 of them code.
 
 ## Where things live
 
 | Area | Files | What it is |
 |---|---:|---|
-| `(root)` | 5 | Top-level config and docs |
-| `.claude` | 34 | The Claude layer — skills, commands, agents, hooks and scripts that make up Trellis itself. |
+| `(root)` | 4 | Top-level config and docs |
+| `.claude` | 38 | The Claude layer — skills, commands, agents, hooks and scripts that make up Trellis itself. |
+| `.githooks` | 3 | Versioned hooks, activated by pointing git at this directory: |
 | `docs` | 2 | Specs, approved mockups, decision records, session handoffs, and the generated map. |
-| `setup` | 1 | Files staged until a project's stack is chosen, then copied to the repo root. |
+| `setup` | 3 | Files staged until a project's stack is chosen, then copied to the repo root. |
 | `stacks` | 11 | Technology knowledge modules, loaded only when a project declares that stack in trellis.json. |
 
 ## Changing most
 
 Last 30 days. Where the work is, and where regressions are most likely.
 
+- `.claude/hooks/session-start.py` (2 commits)
+- `.claude/scripts/scan-secrets.py` (1 commits)
+- `.claude/scripts/tests/run-secret-tests.py` (1 commits)
+- `.claude/scripts/validate-config.py` (1 commits)
 - `.claude/hooks/guard-production.py` (1 commits)
-- `.claude/hooks/session-start.py` (1 commits)
 - `.claude/hooks/tests/run.py` (1 commits)
 - `.claude/hooks/verify-gate.py` (1 commits)
 - `.claude/hooks/write-handoff.py` (1 commits)
 - `.claude/scripts/build-map.py` (1 commits)
 - `.claude/scripts/check-integrity.py` (1 commits)
-- `.claude/scripts/mockup.py` (1 commits)
 
 ---
 
-Generated 2026-08-11 19:41 UTC from commit `9eaa753`.
+Generated 2026-08-11 19:47 UTC from commit `8e6da80`.
 
 If this disagrees with the code, the code is right — regenerate with `.claude/scripts/build-map.py`.

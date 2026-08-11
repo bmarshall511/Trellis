@@ -1,106 +1,174 @@
 # Trellis
 
-<https://github.com/bmarshall511/Trellis>
+**A structure that guides how AI agents build software** — so the result is clean, tested, accessible,
+secure and maintainable, regardless of what it's built with.
 
-A structure that guides how software gets built, so the result is clean, tested, performant,
-accessible and maintainable — regardless of what it's built with.
+Trellis contains no application and no stack. It is the process, the standards and the guardrails.
 
-Trellis contains **no application and no stack**. It is the process, the standards and the guardrails.
-What a project is built with gets decided during that project, by the agent, based on what the project
-actually needs.
+---
 
-## Using it
+## The problem
 
-Download this repo, activate its git hooks, then open Claude and describe what you want to build.
+Coding agents are capable and inconsistent. The same agent, given the same task on two different days,
+produces work of very different quality — because nothing holds it to a standard between sessions.
 
-```bash
-git config core.hooksPath .githooks
-```
+So you re-explain yourself. Every new project, you set up the same conventions, restate the same
+expectations, and rediscover the same mistakes. Then a session ends, the context is gone, and the next
+one starts from nothing.
 
-Git will not do that automatically on clone — a repo that installed its own hooks on clone would be a
-remote code execution vector. Trellis warns at session start if it has not been run.
+Trellis is the part you'd otherwise rebuild every time.
 
-```
-claude
-> I want to build <describe it>
-```
+## What it actually does
 
-The agent interviews you, recommends a stack for those requirements, writes specs, produces designs for
-your approval, and then builds — with every quality gate enforced automatically.
+**Nothing gets built from a guess.**
+Specs are written interactively — the agent interrogates you until nothing is ambiguous, and a readiness
+checklist refuses a spec containing words like "appropriate" or "handle", because each one hides a
+decision that would otherwise be invented at 3am. Implementation then runs without questions. It finishes
+green, or it stops and writes down the single thing it couldn't resolve. It never assumes.
 
-## What's in here
+**Nothing merges without proof.**
+Every acceptance criterion must map to a test that would fail if that criterion broke. Not a coverage
+percentage — coverage measures which lines ran, not which promises hold. A hook prevents the agent from
+ending its turn while any gate is red, so "Claude says it's done" becomes "Claude proved it's done".
 
-```
-.claude/skills/     the standards and the process, written as principles
-.claude/commands/   spec new, spec next, spec status, mockup, handoff, map, audit
-.claude/agents/     independent reviewers and auditors
-.claude/hooks/      guardrails that run automatically
-docs/specs/         your specs
-docs/mockups/       approved designs, kept for reference
-docs/map/           auto-generated overview so the agent doesn't re-read the codebase
-stacks/             knowledge modules, loaded only for the technologies a project uses
-setup/              config files staged until a project's stack is chosen
-.githooks/          secret scanning on commit, gates on push
-trellis.json        what this project is and what it's built with
-```
+**Production cannot be damaged.**
+Enforced by what exists rather than by what the agent was told. A guard blocks 31 dangerous command
+shapes and catches the evasions — environment-variable prefixes, pipes, base64. It is the third line of
+defence and the weakest; the first is that production write credentials never exist on the machine.
 
-## The three things Trellis actually does
+**Context survives the session.**
+A handoff is written before compaction, with a copy-pastable prompt. A generated map means an agent reads
+an overview instead of the whole codebase.
 
-**1. Nothing gets built from a guess.**
-Specs are written interactively — the agent keeps asking until nothing is ambiguous. Implementation then
-runs without questions. A run either finishes green or stops and writes down the single thing it couldn't
-resolve. It never assumes.
+**Designs are approved before they're built.**
+Approval is bound to a hash of the mockup *and* the design tokens it was rendered against, so editing
+either one voids it automatically. A file-existence check would have been forgeable.
 
-**2. Nothing merges without proof.**
-Every acceptance criterion in a spec must map to a test. Type checking, linting, tests and — where there's
-a user interface — accessibility and performance all have to pass. The agent cannot mark work complete
-while any gate is red.
+## What it is not
 
-**3. Production cannot be damaged.**
-An agent never holds write access to a production database. This is enforced by the credentials that exist,
-not by an instruction it might forget.
+- Not a framework, boilerplate or starter app. There is no application here
+- Not tied to a language, framework, database or host
+- Not a set of suggestions. The gates fail builds
 
-## Project types
+## How it works
 
-Trellis adapts to what you're building. A project declares its type in `trellis.json`, and parts of the
-process switch on and off accordingly.
+Three layers.
+
+**The core** is stack-agnostic and always active: ten skills written as principles, three read-only
+reviewer agents, nine commands, four hooks. It knows nothing about any specific technology.
+
+**Stack modules** hold what's known about specific technologies — version traps, quota cliffs, correct
+patterns, deprecations, and the dangerous commands that tooling makes possible. A module loads **only**
+if a project declares it, so you pay no context for technologies you don't use. Each carries a dated
+`VERIFIED` file, because technology knowledge decays fast.
+
+**The project declaration** (`trellis.json`) says what a project is and what it's built with. Everything
+reads it. Trellis defines *what* must be verified; stack modules decide *how*:
+
+| Gate | Must |
+|---|---|
+| `types` | Fail on any type error |
+| `lint` | Fail on any lint error |
+| `test` | Run the full suite, fail on any failure |
+| `a11y` | *(UI only)* Fail on any accessibility violation |
+| `perf` | *(UI only)* Fail on any performance budget breach |
+
+A gate that doesn't apply is *declared* absent. It is never silently missing — absence is a decision.
+
+Project type decides which parts of the process are active:
 
 | | Specs | Tests | Mockups | Accessibility |
 |---|---|---|---|---|
-| Application with a UI | ✓ | ✓ | ✓ | ✓ |
-| API or service | ✓ | ✓ | — | — |
-| CLI tool | ✓ | ✓ | — | — |
-| Library | ✓ | ✓ | — | — |
+| `app` — has a user interface | ✓ | ✓ | ✓ | ✓ |
+| `service` — API, no interface | ✓ | ✓ | — | — |
+| `cli` | ✓ | ✓ | — | — |
+| `library` | ✓ | ✓ | — | — |
 
-## Stack modules
+## Getting started
 
-`stacks/` holds what Trellis knows about specific technologies — correct patterns, version traps, cost
-cliffs, and the quality gate each one implements. A module is loaded only if `trellis.json` says the
-project uses it. A project using none of them still gets the entire core.
+```bash
+git clone https://github.com/bmarshall511/Trellis.git my-project
+cd my-project
+rm -rf .git && git init
+git config core.hooksPath .githooks
+```
 
-Technology knowledge goes stale quickly. Each module records when it was last verified and can refresh
-itself.
+That last line matters. Git won't activate a repository's own hooks on clone — a repo that could would be
+a remote code execution vector — so it's one command, once. Trellis warns you at session start if you
+forget.
 
-See [stacks/README.md](stacks/README.md) to add one.
+Then open Claude and say what you want to build:
 
-## The gate contract
+```
+claude
+> I want to build a tool that tracks my reading list
+```
 
-Trellis defines *what* must be verified. Stack modules decide *how*.
+The agent interviews you, recommends a stack for *those* requirements, and writes `trellis.json`. It
+won't scaffold anything before you've agreed to the choices.
 
-Every project exposes the same commands, whatever it's written in:
+### Commands
 
-| Command | Must |
+| | |
 |---|---|
-| `verify:types` | Fail on any type error |
-| `verify:lint` | Fail on any lint error |
-| `verify:test` | Run the full suite, fail on any failure |
-| `verify:a11y` | *(UI only)* Fail on any accessibility violation |
-| `verify:perf` | *(UI only)* Fail on any performance budget breach |
-| `verify` | All of the above, in order, stopping at the first failure |
+| `/spec-new` | Write a spec. Interviews you until nothing is ambiguous |
+| `/spec-next` | Build the next ready spec |
+| `/spec-status` | Every spec's real status, computed from disk rather than trusted |
+| `/spec-verify` | Prove a spec is done — every criterion tested, every gate green |
+| `/mockup` | Design a screen, or the project's visual foundations, for approval |
+| `/audit` | Audit against the standards. Changes nothing |
+| `/map` | Regenerate the project map |
+| `/handoff` | Write a handoff for a fresh session |
+| `/stack-add` | Research a technology and add it as a stack module |
 
-A gate that isn't applicable is declared absent in `trellis.json`, not silently skipped.
+### Layout
+
+```
+.claude/skills/     standards and process, written as principles
+.claude/commands/   the commands above
+.claude/agents/     read-only reviewers and auditors
+.claude/hooks/      guardrails that run automatically
+.claude/scripts/    map, mockup approval, secret scanning, integrity checks
+.githooks/          secret scanning on commit, gates on push
+stacks/             technology knowledge, loaded only when used
+docs/specs/         your specs
+docs/mockups/       approved designs, kept for reference
+docs/map/           generated overview so agents don't re-read the codebase
+setup/              config staged until a stack is chosen
+trellis.json        what this project is and what it's built with
+```
+
+## Adding a technology
+
+`stacks/` ships one worked module (Supabase) and a template. `/stack-add <name>` researches a technology
+against primary sources and writes the module.
+
+A module can contribute a skill, guard patterns, a map extractor and staged config. See
+[stacks/README.md](stacks/README.md).
+
+**Every guard pattern needs a test.** An untested guard is not a guard — the first version of the
+production guard in this repo allowed everything through, and only a test caught it.
+
+## Verifying it
+
+```bash
+.claude/hooks/tests/run.py                   # 51 production-guard cases
+.claude/scripts/tests/run-secret-tests.py    # 22 secret-scanner cases
+.claude/scripts/check-integrity.py           # cross-references resolve
+.claude/scripts/build-map.py --check         # map is current
+```
+
+The integrity check exists because each piece can be individually correct while the whole is broken — a
+command loading a renamed skill is silently a no-op, and nothing about it looks wrong.
 
 ## Status
 
-Under construction. See [PLAN.md](PLAN.md) for the build order and [DECISIONS.md](DECISIONS.md) for
-every decision made and why.
+Early. The core works and is tested. What hasn't happened yet is enough real use to know which of these
+standards genuinely change an agent's output and which merely feel right.
+
+Stack modules are the natural contribution: self-contained, they don't touch the core, and their value is
+entirely in being current.
+
+## Licence
+
+MIT
