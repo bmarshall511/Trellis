@@ -16,6 +16,7 @@ Run:
   spec-coverage.py              map every spec that claims done or verifying
   spec-coverage.py --strict     exit non-zero if any criterion is uncovered
 """
+import json
 import os
 import re
 import sys
@@ -54,6 +55,28 @@ def criteria(body):
             for m in re.finditer(r"^(\d+)\.\s+((?:.|\n(?!\s*\d+\.|\n))*)", match.group(1), re.M)]
 
 
+def gate_scripts():
+    """Commands in trellis.json's gates often point at scripts that assert criteria directly.
+    A criterion checked by the a11y gate is verified -- it just is not in a test file."""
+    try:
+        with open(os.path.join(ROOT, "trellis.json")) as fh:
+            gates = (json.load(fh).get("gates") or {})
+    except Exception:
+        return []
+    found = []
+    for command in gates.values():
+        if not command:
+            continue
+        for token in re.findall(r"[\w./-]+\.(?:mjs|js|ts|py|sh)", command):
+            path = os.path.join(ROOT, token)
+            if os.path.exists(path):
+                found.append(os.path.relpath(path, ROOT))
+    # No transitive scanning. An earlier version followed file paths mentioned inside gate scripts
+    # and picked up src/ files listed in a bundle-size array -- which meant a COMMENT in source code
+    # could satisfy coverage. Source is the thing being verified, never the verification.
+    return sorted(set(found))
+
+
 def test_files():
     found = []
     for dirpath, dirnames, filenames in os.walk(ROOT):
@@ -87,9 +110,14 @@ def find_coverage(spec_id, number, files):
             if not any(p.search(line) for p in patterns):
                 continue
             symbol = None
-            for back in range(index, max(-1, index - 6), -1):
-                m = re.search(r"(?:def|it|test|func|fn|Scenario)\s*[( ]?[\"']?([A-Za-z0-9_\- ]{3,})",
-                              lines[back])
+            definition = re.compile(r"(?:def|it|test|func|fn|Scenario)\s*[( ]?[\"']?([A-Za-z0-9_\- ]{3,})")
+            # The matching line is usually the definition itself. If it is a `describe` header, the
+            # test is BELOW it -- scanning backwards lands on the previous, unrelated test.
+            for offset in [0, 1, 2, 3, 4, 5, -1, -2]:
+                probe = index + offset
+                if not 0 <= probe < len(lines):
+                    continue
+                m = definition.search(lines[probe])
                 if m:
                     symbol = m.group(1).strip()
                     break
@@ -157,7 +185,7 @@ def main():
             print("No specs are verifying or done.")
             return 0
 
-    files = test_files()
+    files = sorted(set(test_files()) | set(gate_scripts()))
     if not files:
         print("No test files found. Coverage cannot be established.")
         return 1

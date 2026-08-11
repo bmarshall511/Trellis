@@ -81,6 +81,20 @@ SELF = {
     ".claude/scripts/tests/secret-cases.json",
 }
 
+# Lockfiles are wall-to-wall high-entropy strings by design -- npm integrity hashes, content
+# addresses, resolved URLs. Every one trips the entropy heuristic, and every one is meaningless.
+# A Node project's very first commit produced 117 false positives before this existed, which would
+# have taught the user to pass --no-verify on day one. A scanner people bypass protects nothing.
+#
+# Pattern matching still runs on them; only the entropy heuristic is skipped, so a real credential
+# accidentally pasted into a lockfile is still caught by its prefix.
+ENTROPY_EXEMPT_NAMES = {
+    "package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock",
+    "bun.lockb", "composer.lock", "gemfile.lock", "poetry.lock", "pdm.lock", "uv.lock",
+    "cargo.lock", "go.sum", "packages.lock.json", "paket.lock", "podfile.lock", "flake.lock",
+    "mix.lock", "pubspec.lock", "gradle.lockfile",
+}
+
 MAX_BYTES = 2_000_000
 
 
@@ -137,6 +151,7 @@ def walk_tree():
 def scan_file(rel_path):
     if rel_path in SELF:
         return []
+    entropy_ok = os.path.basename(rel_path).lower() not in ENTROPY_EXEMPT_NAMES
     if os.path.splitext(rel_path)[1].lower() in SKIP_EXTENSIONS:
         return []
     full = os.path.join(ROOT, rel_path)
@@ -164,6 +179,8 @@ def scan_file(rel_path):
             name = decoded_secret(line)
             if name:
                 findings.append((number, f"{name} (base64-encoded)", "<encoded>"))
+                continue
+            if not entropy_ok:
                 continue
             for value in re.findall(r"['\"]([A-Za-z0-9/+_=-]{24,})['\"]", line):
                 if looks_random(value):

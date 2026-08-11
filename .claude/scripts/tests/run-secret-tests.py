@@ -12,10 +12,23 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 cases = json.load(open(os.path.join(HERE, "secret-cases.json")))
 failures = []
 for expected, key in ((1, "detect"), (0, "clean")):
-    for name, line in cases[key]:
-        fd, path = tempfile.mkstemp(suffix=".txt", dir=ROOT)
-        with os.fdopen(fd, "w") as fh:
-            fh.write(line + "\n")
+    for case in cases[key]:
+        # A case may name the file it lives in: some rules depend on the filename, such as the
+        # lockfile exemption from the entropy heuristic.
+        name, line, filename = (case + [None])[:3] if len(case) < 3 else case
+        if filename:
+            path = os.path.join(ROOT, filename)
+            existed = os.path.exists(path)
+            backup = path + ".bak" if existed else None
+            if existed:
+                os.rename(path, backup)
+            with open(path, "w") as fh:
+                fh.write(line + "\n")
+        else:
+            fd, path = tempfile.mkstemp(suffix=".txt", dir=ROOT)
+            with os.fdopen(fd, "w") as fh:
+                fh.write(line + "\n")
+            backup = None
         rel = os.path.relpath(path, ROOT)
         try:
             result = subprocess.run([SCANNER, rel], cwd=ROOT, capture_output=True, text=True)
@@ -23,6 +36,8 @@ for expected, key in ((1, "detect"), (0, "clean")):
                 failures.append("%s: %s (exit %d, wanted %d)" % (key, name, result.returncode, expected))
         finally:
             os.remove(path)
+            if backup:
+                os.rename(backup, path)
 total = len(cases["detect"]) + len(cases["clean"])
 if failures:
     print("FAILING (%d/%d):" % (len(failures), total))

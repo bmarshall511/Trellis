@@ -80,6 +80,15 @@ Compare the built screen against the approved mockup and report any difference y
 reason. Differences are often legitimate — real data behaves differently from a mockup — but they must be
 stated, not absorbed silently.
 
+## Practicalities
+
+Helper scripts (screenshots, servers) belong **in the project**, not a temp directory — a browser
+driver resolves from the project's own dependencies and will not be found elsewhere.
+
+A page using ES modules will render **nothing** when opened over `file://`. UI mockups and the gates
+that check them need a static server, even for a single static page. This fails silently: the browser
+loads, the screenshot succeeds, and the page is blank.
+
 ## Anti-patterns
 
 - Implementing first and producing a mockup afterwards to satisfy the gate

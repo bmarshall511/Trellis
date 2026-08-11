@@ -100,6 +100,10 @@ These are newer and frequently missed:
 
 ## Testing
 
+Two things that cost an hour if you meet them cold: an automated checker generally needs a browser
+*context* rather than a bare page, and a page served over `file://` will not run ES modules — so the
+gate can pass against a blank page. Serve over http, even for one static file.
+
 Automated checks run as the `a11y` gate and must pass — but treat a pass as "no obvious errors", not "this
 is accessible".
 
