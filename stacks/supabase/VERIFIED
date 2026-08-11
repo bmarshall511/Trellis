@@ -1,0 +1,5 @@
+2026-08-11 — CLI destructive-command behaviour, backup coverage and RLS guidance checked against
+Supabase's official documentation during Trellis research rounds 1-6.
+
+NOT re-verified since: pricing figures, free-tier limits, and the server-side auth integration pattern.
+Check the vendor's own pages before relying on any specific number or API shape.

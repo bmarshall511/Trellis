@@ -1,0 +1,210 @@
+{
+ "block": [
+  [
+   "drop table",
+   "psql -c \"DROP TABLE users;\""
+  ],
+  [
+   "truncate",
+   "psql -c \"truncate orders\""
+  ],
+  [
+   "delete no where",
+   "psql -c \"DELETE FROM users;\""
+  ],
+  [
+   "update no where",
+   "psql -c \"UPDATE users SET admin = true\""
+  ],
+  [
+   "grant",
+   "psql -c \"GRANT ALL ON users TO app\""
+  ],
+  [
+   "remote postgres url",
+   "psql postgresql://u:p@db.example.com:5432/prod"
+  ],
+  [
+   "remote mongo",
+   "mongosh mongodb+srv://u:p@cluster.mongodb.net/prod"
+  ],
+  [
+   "psql -h remote",
+   "psql -h db.prod.internal -U admin"
+  ],
+  [
+   "force push",
+   "git push --force origin feature"
+  ],
+  [
+   "push to main",
+   "git push origin main"
+  ],
+  [
+   "reset --hard",
+   "git reset --hard origin/main"
+  ],
+  [
+   "no-verify",
+   "git commit --no-verify -m wip"
+  ],
+  [
+   "env-prefix bypass",
+   "LEFTHOOK=0 git commit -m skip"
+  ],
+  [
+   "husky bypass",
+   "HUSKY=0 git commit -m skip"
+  ],
+  [
+   "guard tampering",
+   "rm .claude/hooks/guard-production.py"
+  ],
+  [
+   "obfuscated psql",
+   "base64 -d <<< ZHJvcA== | psql"
+  ],
+  [
+   "node -e drop",
+   "node -e \"require('pg');DROP\""
+  ],
+  [
+   "rm -rf home",
+   "rm -rf ~"
+  ],
+  [
+   "rm -rf root",
+   "rm -fr /"
+  ],
+  [
+   "write-then-run",
+   "bash scripts/deploy-prod.sh"
+  ],
+  [
+   "eval pipeline",
+   "eval \"$(echo psql -h prod.db)\""
+  ],
+  [
+   "supabase reset --linked",
+   "supabase db reset --linked"
+  ],
+  [
+   "supabase reset --db-url",
+   "supabase db reset --db-url postgresql://x@remote/db"
+  ],
+  [
+   "supabase reset bare",
+   "supabase db reset"
+  ],
+  [
+   "supabase db push",
+   "supabase db push"
+  ],
+  [
+   "supabase link",
+   "supabase link --project-ref abcdefgh"
+  ],
+  [
+   "supabase projects delete",
+   "supabase projects delete abcdefgh"
+  ],
+  [
+   "supabase secrets set",
+   "supabase secrets set FOO=bar"
+  ],
+  [
+   "supabase dump --linked",
+   "supabase db dump --linked -f dump.sql"
+  ],
+  [
+   "remote mysql url",
+   "mysql mysql://root:pw@db.prod.example.com:3306/app"
+  ],
+  [
+   "remote mysql -h",
+   "mysql -h db.prod.example.com -u root app"
+  ]
+ ],
+ "allow": [
+  [
+   "local postgres",
+   "psql postgresql://postgres@localhost:5432/dev"
+  ],
+  [
+   "local psql -h",
+   "psql -h localhost -U postgres"
+  ],
+  [
+   "delete with where",
+   "psql -c \"DELETE FROM users WHERE id = 3\""
+  ],
+  [
+   "update with where",
+   "psql -c \"UPDATE users SET name = 'x' WHERE id = 3\""
+  ],
+  [
+   "normal push",
+   "git push --set-upstream origin feat/thing"
+  ],
+  [
+   "force-with-lease",
+   "git push --force-with-lease origin feat/x"
+  ],
+  [
+   "run tests",
+   "npm test"
+  ],
+  [
+   "ordinary grep",
+   "grep -r update src/"
+  ],
+  [
+   "read a file",
+   "cat docs/specs/SPEC-001.md"
+  ],
+  [
+   "install deps",
+   "pnpm install"
+  ],
+  [
+   "docker compose",
+   "docker compose up -d"
+  ],
+  [
+   "local script",
+   "bash scripts/seed-local.sh"
+  ],
+  [
+   "python no db",
+   "python3 -c \"print(1+1)\""
+  ],
+  [
+   "supabase reset --local",
+   "supabase db reset --local"
+  ],
+  [
+   "supabase start",
+   "supabase start"
+  ],
+  [
+   "supabase migration new",
+   "supabase migration new add_users_table"
+  ],
+  [
+   "supabase test db",
+   "supabase test db"
+  ],
+  [
+   "supabase gen types",
+   "supabase gen types typescript --local"
+  ],
+  [
+   "local mysql url",
+   "mysql mysql://root@localhost:3306/app"
+  ],
+  [
+   "local mysql -h",
+   "mysql -h localhost -u root app"
+  ]
+ ]
+}

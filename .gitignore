@@ -1,0 +1,34 @@
+# Runtime state, not source
+.claude/.verify-state.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Credentials — never commit. Secret scanning should catch these too, but defence in depth.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.keystore
+
+# Dependencies and build output (whatever stack a project chooses)
+node_modules/
+dist/
+build/
+out/
+.next/
+target/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Test and tool output
+coverage/
+test-results/
+playwright-report/
+.turbo/
+.cache/

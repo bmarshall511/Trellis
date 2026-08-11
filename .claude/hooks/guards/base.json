@@ -1,0 +1,110 @@
+{
+  "$comment": "Stack-agnostic production guard patterns. Stack modules add their own via stacks/<name>/guard.json, which is merged on top of this. Patterns are Python regex, matched case-insensitively against the full command string after normalisation.",
+
+  "version": 1,
+
+  "deny": [
+    {
+      "id": "sql-drop",
+      "pattern": "\\bdrop\\s+(database|schema|table|role|user)\\b",
+      "reason": "DROP against a database. Schema changes belong in a reviewed migration, never an ad-hoc command."
+    },
+    {
+      "id": "sql-truncate",
+      "pattern": "\\btruncate\\b",
+      "reason": "TRUNCATE deletes every row and is not recoverable from a trash can."
+    },
+    {
+      "id": "sql-unqualified-delete",
+      "pattern": "\\bdelete\\s+from\\s+[\\w.\"]+\\s*(;|$)",
+      "reason": "DELETE with no WHERE clause deletes every row."
+    },
+    {
+      "id": "sql-unqualified-update",
+      "pattern": "\\bupdate\\s+[\\w.\"]+\\s+set\\b(?!.*\\bwhere\\b)",
+      "reason": "UPDATE with no WHERE clause rewrites every row."
+    },
+    {
+      "id": "sql-grant",
+      "pattern": "\\b(grant|revoke|alter\\s+role)\\b",
+      "reason": "Changing database privileges is a human-only operation."
+    },
+    {
+      "id": "remote-postgres",
+      "pattern": "(postgres|postgresql)://(?![^@\\s]*@?(localhost|127\\.0\\.0\\.1|\\[::1\\]|0\\.0\\.0\\.0))",
+      "reason": "Database connection string pointing somewhere that is not localhost."
+    },
+    {
+      "id": "remote-mysql",
+      "pattern": "(mysql|mariadb)://(?![^@\\s]*@?(localhost|127\\.0\\.0\\.1|\\[::1\\]))",
+      "reason": "Database connection string pointing somewhere that is not localhost."
+    },
+    {
+      "id": "remote-mongo",
+      "pattern": "mongodb(\\+srv)?://(?![^@\\s]*@?(localhost|127\\.0\\.0\\.1|\\[::1\\]))",
+      "reason": "Database connection string pointing somewhere that is not localhost."
+    },
+    {
+      "id": "psql-remote-host",
+      "pattern": "\\b(psql|pg_dump|pg_restore|pgcli|mysql|mongosh)\\b[^|;]*\\s-h\\s*(?!localhost|127\\.0\\.0\\.1|\\[::1\\])[\\w.-]+",
+      "reason": "Database client pointed at a remote host."
+    },
+    {
+      "id": "force-push",
+      "pattern": "\\bgit\\s+push\\b[^|;]*(--force(?!-with-lease)|\\s-f\\b)",
+      "reason": "Force push discards history irreversibly. Use --force-with-lease if you truly mean it, and only with a human present."
+    },
+    {
+      "id": "push-to-default-branch",
+      "pattern": "\\bgit\\s+push\\b[^|;]*\\s(origin\\s+)?(main|master)\\b",
+      "reason": "Direct push to the default branch. Work lands through a pull request."
+    },
+    {
+      "id": "history-rewrite",
+      "pattern": "\\bgit\\s+(reset\\s+--hard|filter-branch|filter-repo)\\b",
+      "reason": "Irreversible history rewrite."
+    },
+    {
+      "id": "hook-bypass",
+      "pattern": "(--no-verify|\\bHUSKY=0\\b|\\bLEFTHOOK=0\\b|\\bSKIP_HOOKS\\b|\\bPRE_COMMIT_ALLOW_NO_CONFIG\\b)",
+      "reason": "Bypassing quality gates. If a gate is wrong, fix the gate."
+    },
+    {
+      "id": "guard-tampering",
+      "pattern": "\\b(rm|mv|truncate|>\\s*)[^|;]*\\.claude/(hooks|settings)",
+      "reason": "Modifying Trellis's own guardrails."
+    },
+    {
+      "id": "recursive-root-delete",
+      "pattern": "\\brm\\s+(-[a-zA-Z]*[rR][a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*[rR])\\s+(/|~|\\$HOME|\\.)(\\s|/?$)",
+      "reason": "Recursive delete of a root, home or working directory."
+    },
+    {
+      "id": "obfuscation",
+      "$comment": "Deliberately spans pipes and separators — `base64 -d <<< ... | psql` is the exact shape this exists to catch. Errs toward blocking; a false positive costs one human-run command.",
+      "pattern": "\\b(base64\\s+(-d|--decode)|\\beval\\b|\\bnode\\s+-e\\b|\\bpython3?\\s+-c\\b|\\bxxd\\s+-r\\b|\\bopenssl\\s+enc\\b).*\\b(psql|pg_dump|pg_restore|postgres|postgresql|mysql|mongo|mongosh|redis-cli|drop|delete|truncate|prod|production)\\b",
+      "reason": "A database or production operation assembled indirectly — decoded, evaluated, or built inside another interpreter. Run it plainly so it can be read, or not at all."
+    },
+    {
+      "id": "write-then-run",
+      "$comment": "A script written this turn and immediately executed bypasses per-command inspection entirely.",
+      "pattern": "\\b(bash|sh|zsh|node|python3?|deno|bun|\\./)\\s*\\S*\\b(prod|production)\\b\\S*\\.(sh|bash|js|mjs|cjs|ts|py)\\b",
+      "reason": "Executing a script file whose name suggests it targets production. The guard cannot inspect what is inside a file — a human must run this."
+    }
+  ],
+
+  "allowLocalhost": [
+    "localhost",
+    "127.0.0.1",
+    "[::1]",
+    "0.0.0.0",
+    "host.docker.internal"
+  ],
+
+  "$notes": [
+    "A denylist cannot be complete. It is the third line of defence, not the first.",
+    "The first is that production write credentials do not exist on this machine.",
+    "The second is that the production role has no write grants, enforced by the database itself.",
+    "If a pattern here fires on legitimate work, do not weaken it silently — record the exception in docs/decisions/."
+  ]
+}

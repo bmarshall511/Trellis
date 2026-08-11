@@ -1,0 +1,40 @@
+{
+  "$comment": "Supabase CLI commands that can reach production. Merged into the core guard when this stack is active. Every pattern has a test case in .claude/hooks/tests/guard-cases.json.",
+  "deny": [
+    {
+      "id": "supabase-db-reset-remote",
+      "pattern": "\\bsupabase\\b[^|;]*\\bdb\\s+reset\\b[^|;]*(--linked|--db-url)",
+      "reason": "supabase db reset against a remote target drops every user-created object in that database, with no confirmation prompt. Only --local is safe."
+    },
+    {
+      "id": "supabase-db-reset-bare",
+      "pattern": "\\bsupabase\\b[^|;]*\\bdb\\s+reset\\b(?![^|;]*--local)",
+      "reason": "supabase db reset without an explicit --local depends on hidden link state to decide its target. Pass --local so the target is visible in the command."
+    },
+    {
+      "id": "supabase-db-push",
+      "pattern": "\\bsupabase\\b[^|;]*\\bdb\\s+push\\b",
+      "reason": "supabase db push applies migrations to the LINKED project, which is hidden CLI state rather than anything visible in the repo. Migrations reach production through the deployment pipeline, not from a developer machine."
+    },
+    {
+      "id": "supabase-link",
+      "pattern": "\\bsupabase\\s+link\\b",
+      "reason": "Linking persists a production project reference locally, giving every subsequent db push a live target. The repo stays unlinked; CI links at run time with a credential that is not on this machine."
+    },
+    {
+      "id": "supabase-remote-commit",
+      "pattern": "\\bsupabase\\b[^|;]*\\bdb\\s+(remote\\s+commit|dump)\\b[^|;]*(--linked|--db-url)",
+      "reason": "Reads directly from a remote database using linked credentials."
+    },
+    {
+      "id": "supabase-projects-delete",
+      "pattern": "\\bsupabase\\s+projects?\\s+delete\\b",
+      "reason": "Deletes an entire Supabase project."
+    },
+    {
+      "id": "supabase-secrets",
+      "pattern": "\\bsupabase\\s+secrets\\s+(set|unset)\\b",
+      "reason": "Changes deployed secrets. Human-only."
+    }
+  ]
+}

@@ -1,0 +1,145 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/trellis/trellis/trellis.schema.json",
+  "title": "Trellis project declaration",
+  "description": "Declares what this project is, what it is built with, and which quality gates apply. Trellis reads this at session start to decide which stack modules to load and which parts of the process are active.",
+  "type": "object",
+  "required": ["name", "type", "gates"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Human-readable project name.",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string",
+      "description": "One sentence on what this project is for. Read by the agent at session start."
+    },
+    "type": {
+      "type": "string",
+      "description": "Determines which parts of the Trellis process are active. 'app' enables mockups and the accessibility and performance gates; the others do not.",
+      "enum": ["app", "service", "cli", "library"]
+    },
+    "stacks": {
+      "type": "array",
+      "description": "Technology modules to load from stacks/. Only these are read into context; everything else costs nothing. Names must match a directory under stacks/.",
+      "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+      "uniqueItems": true,
+      "default": []
+    },
+    "gates": {
+      "type": "object",
+      "description": "The verification contract. Every gate is either a command string that must exit non-zero on failure, or null to declare it deliberately absent. A gate must never be silently missing — absence is a declaration.",
+      "required": ["types", "lint", "test", "a11y", "perf"],
+      "additionalProperties": false,
+      "properties": {
+        "types": { "$ref": "#/definitions/gate", "description": "Type checking. null only for untyped languages." },
+        "lint": { "$ref": "#/definitions/gate", "description": "Linting and formatting." },
+        "test": { "$ref": "#/definitions/gate", "description": "Full test suite." },
+        "a11y": { "$ref": "#/definitions/gate", "description": "Accessibility. Required when type is 'app'." },
+        "perf": { "$ref": "#/definitions/gate", "description": "Performance budgets. Required when type is 'app'." }
+      }
+    },
+    "standards": {
+      "type": "object",
+      "description": "Project-specific thresholds. Trellis ships defaults; a project may raise them but should not lower them without recording why in docs/decisions/.",
+      "additionalProperties": false,
+      "properties": {
+        "accessibility": {
+          "type": "string",
+          "description": "Conformance target. 'AA' is the floor. 'AA+' means AA everywhere plus a named subset of AAA criteria listed in docs/decisions/.",
+          "enum": ["AA", "AA+", "AAA"],
+          "default": "AA"
+        },
+        "coverage": {
+          "type": "object",
+          "description": "Trellis does not enforce a coverage percentage. It enforces that every acceptance criterion in every spec maps to at least one test. Percentages are advisory only.",
+          "additionalProperties": false,
+          "properties": {
+            "advisory": { "type": "number", "minimum": 0, "maximum": 100 }
+          }
+        },
+        "specMaxMinutes": {
+          "type": "integer",
+          "description": "Largest unit of work a single spec may represent, in skilled-human minutes. Specs above this must be decomposed. Guards against unattended runs whose reliability decays with length.",
+          "minimum": 15,
+          "maximum": 480,
+          "default": 90
+        }
+      }
+    },
+    "production": {
+      "type": "object",
+      "description": "How production is reached, if at all. Trellis's guardrails read this. Absence means the agent has no production access of any kind.",
+      "additionalProperties": false,
+      "properties": {
+        "readAccess": {
+          "type": "boolean",
+          "description": "Whether the agent may run read-only queries against production for debugging. Enforced by database grants, never by instruction — the credential must be incapable of writing.",
+          "default": false
+        },
+        "credentialCommand": {
+          "type": "string",
+          "description": "Command that emits a read-only production credential to stdout. Must never write the credential to a file or environment variable. Write credentials must not exist on the development machine at all."
+        }
+      }
+    },
+    "autonomy": {
+      "type": "object",
+      "description": "Controls for unattended runs.",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "maxRepairAttempts": {
+          "type": "integer",
+          "description": "How many times a run may fix and retry a failing gate before stopping and writing BLOCKED.",
+          "minimum": 0, "maximum": 5, "default": 2
+        },
+        "onBlocked": {
+          "type": "string",
+          "description": "What happens to the remaining queue when a spec blocks. 'halt' leaves one thing to review rather than a pile of half-finished work.",
+          "enum": ["halt", "skip"],
+          "default": "halt"
+        },
+        "requiresApproval": {
+          "type": "array",
+          "description": "Glob patterns whose modification always requires a human, no matter how green the gates are.",
+          "items": { "type": "string" },
+          "default": [
+            "**/migrations/**",
+            "**/auth/**",
+            ".github/workflows/**",
+            "**/*.policy.sql",
+            "package.json",
+            "trellis.json"
+          ]
+        }
+      }
+    }
+  },
+  "definitions": {
+    "gate": {
+      "oneOf": [
+        { "type": "string", "minLength": 1, "description": "Shell command. Must exit non-zero on failure." },
+        { "type": "null", "description": "Deliberately absent. Declaring null is a decision; omitting the key is an error." }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "app" } }, "required": ["type"] },
+      "then": {
+        "properties": {
+          "gates": {
+            "properties": {
+              "a11y": { "type": "string", "minLength": 1 },
+              "perf": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "description": "Projects with a user interface must have working accessibility and performance gates. They cannot be declared absent."
+      }
+    }
+  ]
+}

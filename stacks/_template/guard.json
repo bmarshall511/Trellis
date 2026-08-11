@@ -1,0 +1,4 @@
+{
+  "$comment": "Dangerous commands this stack's tooling makes possible. Merged into the core guard when this stack is active. Every pattern needs a test case in .claude/hooks/tests/guard-cases.json.",
+  "deny": []
+}
