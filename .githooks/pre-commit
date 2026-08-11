@@ -30,6 +30,16 @@ if [ -x .claude/scripts/check-integrity.py ] && [ -d .claude/skills ]; then
   }
 fi
 
+# The map is generated from the tracked file set, so it goes stale whenever files are added or removed.
+# This has caught itself twice; enforce it rather than relying on remembering.
+if [ -x .claude/scripts/build-map.py ] && [ -d docs/map ]; then
+  .claude/scripts/build-map.py --check >/dev/null || {
+    echo "docs/map/OVERVIEW.md is out of date." >&2
+    echo "  Run: .claude/scripts/build-map.py && git add docs/map/OVERVIEW.md" >&2
+    failed=1
+  }
+fi
+
 if [ "$failed" -ne 0 ]; then
   echo "" >&2
   echo "Commit blocked. Fix the above, or --no-verify if you are certain and can say why." >&2
