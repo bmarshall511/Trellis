@@ -106,40 +106,13 @@ finish() {
   set +e
   local outcome="$1" detail="${2:-}"
   local elapsed=$(( $(date +%s) - STARTED_EPOCH ))
-  local covered gates
-  covered="$(.claude/scripts/spec-coverage.py "$SPEC_ID" 2>&1 \
-             | grep -oE '[0-9]+/[0-9]+ criteria covered' | head -1)"
-  [[ -n "$covered" ]] || covered="unknown"
-  if [[ "$outcome" == "TAMPERED" ]]; then
-    # Reporting a gate result here would be worse than reporting nothing: the gates read green
-    # BECAUSE they were removed, which is the most misleading line the report could carry.
-    gates="not trustworthy — the gate definitions were modified by this run"
-    covered="not trustworthy"
-  else
-    gates="$(echo '{}' | .claude/hooks/verify-gate.py >/dev/null 2>&1 && echo 'green' || echo 'RED')"
-  fi
 
-  {
-    echo "# Run report — $SPEC_ID"
-    echo
-    echo "**Outcome:** $outcome"
-    echo "**Started:** $STARTED_AT · **Elapsed:** ${elapsed}s"
-    echo "**Branch:** \`$BRANCH\`"
-    echo "**Gates:** $gates · **Criteria covered:** $covered"
-    echo
-    if [[ -n "$detail" ]]; then echo "$detail"; echo; fi
-    echo "## Files changed"
-    echo
-    echo '```'
-    git diff --stat "$(git merge-base HEAD main 2>/dev/null || echo HEAD~1)" 2>/dev/null | tail -30 || echo "(none)"
-    echo '```'
-    if [[ -f BLOCKED.md ]]; then
-      echo
-      echo "## Blocked"
-      echo
-      cat BLOCKED.md
-    fi
-  } > "$REPORT"
+  # One writer, shared with the interactive path. When they were separate, /spec-next produced no
+  # report at all, so interactively-built work could never be delivered — and nothing said so.
+  .claude/scripts/write-run-report.sh "$SPEC_ID" "$outcome" \
+    "${detail}${detail:+
+
+}Started $STARTED_AT, elapsed ${elapsed}s." >/dev/null
 
   .claude/scripts/notify.sh "$outcome" "$SPEC_ID" "$REPORT" >/dev/null 2>&1
   echo

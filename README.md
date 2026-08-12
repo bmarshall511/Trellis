@@ -73,7 +73,7 @@ have been forgeable.
 Three layers.
 
 **The core** is stack-agnostic and always active: ten skills written as principles, three read-only
-reviewer agents, ten commands, four hooks. It knows nothing about any specific technology.
+reviewer agents, eleven commands, four hooks. It knows nothing about any specific technology.
 
 **Stack modules** hold what's known about specific technologies — version traps, quota cliffs, correct
 patterns, deprecations, and the dangerous commands that tooling makes possible. A module loads **only**
@@ -136,7 +136,8 @@ won't scaffold anything before you've agreed to the choices.
 | | |
 |---|---|
 | `/spec-new` | Write a spec. Interviews you until nothing is ambiguous |
-| `/spec-next` | Build the next ready spec |
+| `/spec-next` | Build the next ready spec — same branch, report and delivery as an unattended run |
+| `/deliver` | Deliver finished work: PR, CI, merge, through the sanctioned path |
 | `/spec-status` | Every spec's real status, computed from disk rather than trusted |
 | `/spec-verify` | Prove a spec is done — every criterion tested, every gate green |
 | `/mockup` | Design a screen, or the project's visual foundations, for approval |
@@ -169,8 +170,13 @@ the next.
 | `pull-request` | Pushes the branch, opens a PR, polls CI, fixes what CI finds, merges when green, and fast-forwards local `main` so the next spec builds on it. |
 
 Both go through a single audited script that re-runs the gates on the branch, checks every acceptance
-criterion is covered, and asks the risk classifier first. The agent has no path to the default branch
-that skips those.
+criterion is covered, and asks the risk classifier first.
+
+**Interactive and unattended produce the same artifacts** — the `agent/<spec-id>` branch and the run
+report — so work built with `/spec-next` delivers through exactly the same path. They differ only in
+whether questions may be asked, never in what they leave behind. Opening a pull request by hand skips
+every check above and produces one nothing will merge automatically, because the branch and report the
+delivery script looks for were never made.
 
 **A run halts the queue rather than pressing on** when a spec blocks, when CI stays red past
 `maxRepairAttempts`, or when the risk classifier says a change needs a human. One thing to decide in

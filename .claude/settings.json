@@ -21,8 +21,9 @@
       "Bash(gh secret:*)",
       "Bash(gh ruleset:*)",
       "Bash(gh workflow:*)",
-      "Bash(gh pr merge:*)",
-      "Bash(gh pr review:*)"
+      "Bash(gh secret:*)",
+      "Bash(gh ruleset:*)",
+      "Bash(gh repo delete:*)"
     ]
   },
   "hooks": {

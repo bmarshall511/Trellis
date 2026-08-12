@@ -1,5 +1,5 @@
 ---
-description: Build the next ready spec — implementation runs without questions
+description: Build the next ready spec — same branch, report and delivery as an unattended run
 argument-hint: [optional spec id, otherwise the next ready one]
 ---
 
@@ -8,47 +8,69 @@ dependencies `done`, and has an approved mockup if `surfaces` includes `ui`).
 
 Load the `spec-authoring`, `testing` and `clean-code` skills.
 
+**This produces exactly the same artifacts as an unattended run** — the `agent/<spec-id>` branch and
+the run report — so the work can be delivered by the same path. Interactive and unattended differ only
+in whether you may ask questions, never in what they leave behind. A spec built without these cannot
+be delivered by the automation, and nothing would tell you until you tried.
+
 ## Before starting
 
 1. Read `trellis.json` and load every module named in `stacks/`.
 2. Read the spec in full. Read its mockup if it has one.
 3. Run `.claude/scripts/spec-lint.py <id>`. **If it fails, stop and report — do not implement an unready spec.**
 4. Verify the approved mockup still matches its recorded hash. If it doesn't, approval is revoked; stop.
-5. Set status to `building`.
+5. **Create the branch:** `git checkout -b agent/<spec-id>` from a clean default branch.
+6. Set status to `building`.
 
 ## While building
 
 - Work only within the spec's scope. `Out of scope` is binding.
 - Every acceptance criterion gets at least one test that would fail if that criterion broke.
-- If a human is present and something is ambiguous, **ask**. That is correct behaviour.
-- If running unattended, do not ask and do not guess. Set status to `blocked`, write a `## Blocked`
-  section containing exactly one specific question, and stop.
+- A human is present here, so **ask** when something is ambiguous. That is the difference between this
+  and an unattended run, and it is the right thing to do.
+- Commit in logical commits as you go.
 
 ## Before claiming completion
 
-Set status to `verifying`, then run every gate declared in `trellis.json`:
+Set status to `verifying`, then run every gate declared in `trellis.json`, stopping at the first failure:
 
 ```
-verify:types → verify:lint → verify:test → verify:a11y → verify:perf
+types → lint → test → a11y → perf
 ```
 
-Stop at the first failure and fix it. If a gate fails more than `autonomy.maxRepairAttempts` times, stop
-and write `## Blocked` with the failing output.
-
-Then verify the contract itself:
+Then verify the contract:
 
 - [ ] `.claude/scripts/spec-coverage.py <id>` shows every criterion covered
 - [ ] All gates green
 - [ ] If `surfaces` includes `ui`: the implementation matches the approved mockup
 - [ ] Nothing outside the spec's scope was changed
-- [ ] No file matching `autonomy.requiresApproval` was touched — if one was, the change needs a human
 
 Only then set status to `done`.
 
 **Never mark `done` on your own assessment.** `done` means the gates passed and every criterion has a
 test. If you cannot show that list, the spec is not done.
 
+## Then deliver it
+
+```bash
+.claude/scripts/write-run-report.sh <spec-id> DONE
+```
+
+Then, if `autonomy.mayMerge` is set in `trellis.json`:
+
+| `mergeVia` | Run |
+|---|---|
+| `pull-request` | `stacks/github/scripts/deliver-run.sh <spec-id>` |
+| `local` | `.claude/scripts/merge-run.sh <spec-id>` |
+
+**Run the script. Do not open a pull request or merge by hand.** Those scripts re-run the gates on the
+branch, re-check coverage, ask the risk classifier, and — for pull requests — wait for CI and fix what
+it finds. Doing any of it manually skips every one of those checks, and produces a pull request nobody
+will merge automatically because the report and branch it looks for were never made.
+
+If `mayMerge` is not set, stop here and tell the user the branch is ready.
+
 ## Report
 
 Finish with: the spec id and title, each acceptance criterion and the test covering it, gate results,
-files changed, and anything you noticed but deliberately did not do.
+the delivery outcome, files changed, and anything you noticed but deliberately did not do.
