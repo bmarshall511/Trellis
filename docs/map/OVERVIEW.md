@@ -7,7 +7,7 @@ _No `trellis.json` — the project is not set up yet._
 
 7 project files, 0 of them code.
 
-_62 framework files (Trellis itself) are excluded — see `.claude/framework-paths.json`._
+_69 framework files (Trellis itself) are excluded — see `.claude/framework-paths.json`._
 
 ## Where things live
 
@@ -20,19 +20,19 @@ _62 framework files (Trellis itself) are excluded — see `.claude/framework-pat
 
 Last 30 days. Where the work is, and where regressions are most likely.
 
+- `.claude/scripts/scan-secrets.py` (3 commits)
+- `.claude/scripts/tests/run-secret-tests.py` (3 commits)
 - `.claude/hooks/session-start.py` (3 commits)
+- `.claude/scripts/spec-coverage.py` (2 commits)
 - `.claude/hooks/guard-production.py` (2 commits)
 - `.claude/hooks/verify-gate.py` (2 commits)
 - `.claude/hooks/write-handoff.py` (2 commits)
 - `.claude/scripts/build-map.py` (2 commits)
 - `.claude/scripts/check-integrity.py` (2 commits)
 - `.claude/scripts/mockup.py` (2 commits)
-- `.claude/scripts/scan-secrets.py` (2 commits)
-- `.claude/scripts/tests/run-secret-tests.py` (2 commits)
-- `.claude/scripts/validate-config.py` (2 commits)
 
 ---
 
-Generated 2026-08-11 23:40 UTC from commit `49846a8`.
+Generated 2026-08-12 00:03 UTC from commit `47a3063`.
 
 If this disagrees with the code, the code is right — regenerate with `.claude/scripts/build-map.py`.

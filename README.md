@@ -36,6 +36,12 @@ Enforced by what exists rather than by what the agent was told. A guard blocks 3
 shapes and catches the evasions — environment-variable prefixes, pipes, base64. It is the third line of
 defence and the weakest; the first is that production write credentials never exist on the machine.
 
+**Work can run unattended, and cannot lie about it.**
+A run implements one spec on its own branch with no human present, and ends in exactly one of four
+states: done, blocked, failed, or tampered. The verdict comes from the gates and the coverage — never
+from what the agent says. It cannot publish, merge, install dependencies, or edit its own guardrails,
+and if the guardrail files change during a run, every other result from that run is discarded.
+
 **Context survives the session.**
 A handoff is written before compaction, with a copy-pastable prompt. A generated map means an agent reads
 an overview instead of the whole codebase.
@@ -120,6 +126,7 @@ won't scaffold anything before you've agreed to the choices.
 | `/map` | Regenerate the project map |
 | `/handoff` | Write a handoff for a fresh session |
 | `/stack-add` | Research a technology and add it as a stack module |
+| `/run` | Run ready specs unattended, halting on the first blocker |
 
 ### Layout
 
@@ -158,6 +165,7 @@ production guard in this repo allowed everything through, and only a test caught
 .claude/scripts/spec-lint.py                 # specs meet the readiness checklist
 .claude/scripts/spec-coverage.py             # every criterion has a test
 .claude/scripts/build-map.py --check         # map is current
+.claude/scripts/tests/run-loop-tests.sh      # 6 unattended-run scenarios
 ```
 
 The integrity check exists because each piece can be individually correct while the whole is broken — a
@@ -170,8 +178,16 @@ interview, twelve acceptance criteria, implementation, gates, commit. That run f
 Trellis itself, all since fixed. The most useful thing it proved: the verify gate genuinely refused to
 let the work be called done while lint was failing.
 
-What still hasn't happened is use at any scale, or on anything with a user interface — so the mockup
-workflow and the accessibility standards remain well-reasoned but unproven.
+It has since also been used to build something with a user interface — three design directions merged
+into approved foundations, a mockup with every state, and the accessibility and performance gates that
+`type: app` requires. That run found four more defects, including a secret scanner that flagged 117 npm
+integrity hashes and would have blocked the first commit of any Node project.
+
+The unattended runner is tested against six scenarios, three of them adversarial: an agent that claims
+success with a gate red, one that claims success with a criterion untested, and one that disables the
+gates and then claims success. All three are caught.
+
+What still hasn't happened is a real overnight run against a real model, or use at any scale.
 
 Stack modules are the natural contribution: self-contained, they don't touch the core, and their value is
 entirely in being current.

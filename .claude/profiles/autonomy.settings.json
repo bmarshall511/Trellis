@@ -1,0 +1,59 @@
+{
+  "$comment": "Settings for an UNATTENDED run. Loaded with --settings, and deliberately NARROWER than the interactive profile — an unattended agent gets fewer capabilities, never more.",
+
+  "$never": [
+    "Do not add --bare to the launch command. Bare mode skips hooks, which removes the Stop gate that",
+    "is the entire basis for 'the agent cannot claim success', and it also bypasses stored credentials",
+    "so the run silently bills per token instead of using the subscription.",
+    "",
+    "Do not use --permission-mode bypassPermissions or --dangerously-skip-permissions. Those permit",
+    "writes to protected paths, so the agent could delete the very guardrails meant to contain it.",
+    "Use dontAsk: it denies anything not explicitly allowed, never waits for input, and — critically —",
+    "denies the ask-a-question tool, so the only way out is finishing or writing BLOCKED.md."
+  ],
+
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.config/gh/**)",
+      "Read(~/.netrc)",
+      "Read(~/.pgpass)",
+      "Bash(security:*)",
+      "Bash(op:*)",
+      "Bash(sudo:*)",
+      "Bash(git push:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git rebase:*)",
+      "Bash(git checkout main:*)",
+      "Bash(git switch main:*)",
+      "Bash(gh:*)",
+      "Bash(npm publish:*)",
+      "Bash(npm install:*)",
+      "Bash(npm i:*)",
+      "Bash(pnpm add:*)",
+      "Bash(yarn add:*)",
+      "Bash(pip install:*)",
+      "Bash(cargo add:*)",
+      "Bash(go get:*)",
+      "Edit(./.claude/hooks/**)",
+      "Edit(./.claude/scripts/**)",
+      "Edit(./.claude/settings.json)",
+      "Edit(./.claude/profiles/**)",
+      "Edit(./.githooks/**)",
+      "Edit(./trellis.json)",
+      "Write(./.claude/hooks/**)",
+      "Write(./.claude/scripts/**)",
+      "Write(./.githooks/**)"
+    ],
+
+    "$denyNotes": {
+      "dependencies": "A new dependency is the highest-consequence thing an unattended run can add, and the thing a prompt-injected agent would most want to add. A spec that needs an unforeseen library ends BLOCKED — that costs one morning decision.",
+      "push-and-gh": "The run produces a local branch. Publishing it is a separate, host-specific step the human or CI performs, so the agent never holds the ability to publish or merge.",
+      "self-modification": "Guardrails, gate scripts and the project declaration are off limits. An agent that can edit its own gates has no gates.",
+      "main": "The run works on its own branch. It must not be able to switch to or reset the default branch."
+    }
+  }
+}
