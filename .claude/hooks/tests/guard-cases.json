@@ -147,6 +147,46 @@
   [
    "gh release create",
    "gh release create v1.0.0"
+  ],
+  [
+   "prose command still chained to a push",
+   "git commit -m \"wip\" && git push origin main"
+  ],
+  [
+   "prose command still chained to rm",
+   "git commit -m \"wip\"; rm -rf ~"
+  ],
+  [
+   "psql -c is an instruction not prose",
+   "psql -c \"DROP TABLE users\""
+  ],
+  [
+   "reset --hard with -q between",
+   "git reset -q --hard HEAD~3"
+  ],
+  [
+   "reset --hard with --quiet between",
+   "git reset --quiet --hard origin/main"
+  ],
+  [
+   "reflog expire",
+   "git reflog expire --expire=now --all"
+  ],
+  [
+   "update-ref -d",
+   "git update-ref -d refs/heads/main"
+  ],
+  [
+   "rm -f -r separated flags",
+   "rm -f -r ~"
+  ],
+  [
+   "rm -r -f separated flags",
+   "rm -r -f $HOME"
+  ],
+  [
+   "rm long-form flags",
+   "rm --recursive --force ~"
   ]
  ],
  "allow": [
@@ -245,6 +285,50 @@
   [
    "gh run list",
    "gh run list --limit 5"
+  ],
+  [
+   "commit message quoting a push",
+   "git commit -m \"docs: never git push origin main directly\""
+  ],
+  [
+   "commit message quoting DROP",
+   "git commit -m \"fix: block DROP TABLE in the guard\""
+  ],
+  [
+   "commit message quoting supabase db push",
+   "git commit -m 'chore: supabase db push is denied'"
+  ],
+  [
+   "pr title quoting a push",
+   "gh pr create --title \"Block git push origin main\" --body x"
+  ],
+  [
+   "commit heredoc quoting danger",
+   "git commit -F - <<'EOF'\nfix: guard blocks DROP TABLE and git push origin main\nEOF"
+  ],
+  [
+   "tag message quoting danger",
+   "git tag -m \"notes: DROP TABLE was fixed\" v1.0.0"
+  ],
+  [
+   "reset --soft",
+   "git reset --soft HEAD~1"
+  ],
+  [
+   "reset without --hard",
+   "git reset HEAD~1"
+  ],
+  [
+   "rm -rf node_modules",
+   "rm -rf node_modules"
+  ],
+  [
+   "rm -rf a build dir",
+   "rm -rf ./dist"
+  ],
+  [
+   "reflog read",
+   "git reflog -6"
   ]
  ]
 }

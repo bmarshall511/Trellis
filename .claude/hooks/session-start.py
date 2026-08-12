@@ -56,6 +56,17 @@ def tripwires(config):
                 "Fix with: git config core.hooksPath .githooks"
             )
 
+    # The merge driver for generated files needs registering per clone, same as hooksPath. Without it,
+    # every concurrent branch conflicts on the map — which is about to be normal once runs create their
+    # own branches.
+    if os.path.exists(os.path.join(REPO_ROOT, ".gitattributes")) and not git(
+            "config", "--get", "merge.trellis-generated.driver"):
+        found.append(
+            "The merge driver for generated files is not registered, so concurrent branches will "
+            "conflict on docs/map/OVERVIEW.md. Fix with: git config merge.trellis-generated.driver "
+            "'.claude/scripts/merge-generated.sh %A %O %B %P'"
+        )
+
     # Secrets that would be readable by anything running here.
     for name in (".env", ".env.local", ".env.production"):
         if os.path.exists(os.path.join(REPO_ROOT, name)):

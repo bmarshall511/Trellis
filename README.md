@@ -103,11 +103,17 @@ git clone https://github.com/bmarshall511/Trellis.git my-project
 cd my-project
 rm -rf .git && git init
 git config core.hooksPath .githooks
+git config merge.trellis-generated.name 'regenerate Trellis-generated files'
+git config merge.trellis-generated.driver '.claude/scripts/merge-generated.sh %A %O %B %P'
 ```
 
-That last line matters. Git won't activate a repository's own hooks on clone — a repo that could would be
-a remote code execution vector — so it's one command, once. Trellis warns you at session start if you
-forget.
+Those last three matter, and git will not do any of them for you on clone — a repository that could
+activate its own hooks would be a remote code execution vector. So they are one-time, per clone, and
+Trellis warns you at session start if either is missing.
+
+The merge driver handles files Trellis generates. Without it, two branches that both regenerate the
+project map merge *cleanly* and produce a map that is quietly wrong — worse than a conflict, because a
+conflict announces itself.
 
 Then open Claude and say what you want to build:
 
@@ -178,6 +184,9 @@ stacks/github/tests/run-risk-tests.py        # 32 risk-classification cases
 .claude/scripts/tests/run-integrity-tests.sh # 11 dangling-reference cases
 .claude/scripts/tests/run-merge-tests.sh     # 10 automatic-merge cases
 ```
+
+The guard suite is the one to extend when you find a hole. Every rule in it exists because something
+got through.
 
 The integrity check exists because each piece can be individually correct while the whole is broken — a
 command loading a renamed skill is silently a no-op, and nothing about it looks wrong.

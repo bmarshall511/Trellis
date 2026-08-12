@@ -42,6 +42,12 @@ Three real examples from this codebase, all found by other people using it:
 | Six copies of a frontmatter parser | There is one way to read frontmatter |
 | A list of two files an approval hashes | Everything a design renders against is an input |
 | A regex matching "load the `x` and `y` skills" | Names are tokens; grammar varies |
+| `reset\s+--hard`, requiring the two adjacent | Shell flags interleave in any order |
+
+The fourth is the one that cost most. `git reset -q --hard` is the same command as
+`git reset --hard`, but the pattern required the tokens to be adjacent, so the `-q` form ran
+unblocked and destroyed an hour of uncommitted work. The rule had been tested — against the one
+spelling its author typed.
 
 The third is the clearest. The pattern had an optional group for a second name, which *consumed* it
 without capturing it — so it checked one of two references and reported that everything resolved. It

@@ -1,8 +1,6 @@
 {
   "$comment": "Stack-agnostic production guard patterns. Stack modules add their own via stacks/<name>/guard.json, which is merged on top of this. Patterns are Python regex, matched case-insensitively against the full command string after normalisation.",
-
   "version": 1,
-
   "deny": [
     {
       "id": "sql-drop",
@@ -61,8 +59,9 @@
     },
     {
       "id": "history-rewrite",
-      "pattern": "\\bgit\\s+(reset\\s+--hard|filter-branch|filter-repo)\\b",
-      "reason": "Irreversible history rewrite."
+      "pattern": "\\bgit\\s+(?:reset\\b[^|;&]*?\\s--hard\\b|filter-branch\\b|filter-repo\\b|update-ref\\s+-d\\b|reflog\\s+(?:delete|expire)\\b)",
+      "reason": "Irreversible history rewrite.",
+      "$comment": "Flags may be interleaved in any order \u2014 `git reset -q --hard` is the same command as `git reset --hard`. An earlier version required the two tokens to be adjacent and let the -q form through, which destroyed real work."
     },
     {
       "id": "hook-bypass",
@@ -76,23 +75,23 @@
     },
     {
       "id": "recursive-root-delete",
-      "pattern": "\\brm\\s+(-[a-zA-Z]*[rR][a-zA-Z]*f|-[a-zA-Z]*f[a-zA-Z]*[rR])\\s+(/|~|\\$HOME|\\.)(\\s|/?$)",
-      "reason": "Recursive delete of a root, home or working directory."
+      "pattern": "\\brm\\b(?=[^|;&]*(?:-\\w*r|--recursive))(?=[^|;&]*(?:-\\w*f|--force))[^|;&]*\\s(?:/|~|\\$HOME|\\.)(?:\\s|/?$)",
+      "reason": "Recursive delete of a root, home or working directory.",
+      "$comment": "-rf, -fr, -r -f and --recursive --force are the same command. Match the flags independently rather than enumerating their arrangements."
     },
     {
       "id": "obfuscation",
-      "$comment": "Deliberately spans pipes and separators — `base64 -d <<< ... | psql` is the exact shape this exists to catch. Errs toward blocking; a false positive costs one human-run command.",
+      "$comment": "Deliberately spans pipes and separators \u2014 `base64 -d <<< ... | psql` is the exact shape this exists to catch. Errs toward blocking; a false positive costs one human-run command.",
       "pattern": "\\b(base64\\s+(-d|--decode)|\\beval\\b|\\bnode\\s+-e\\b|\\bpython3?\\s+-c\\b|\\bxxd\\s+-r\\b|\\bopenssl\\s+enc\\b).*\\b(psql|pg_dump|pg_restore|postgres|postgresql|mysql|mongo|mongosh|redis-cli|drop|delete|truncate|prod|production)\\b",
-      "reason": "A database or production operation assembled indirectly — decoded, evaluated, or built inside another interpreter. Run it plainly so it can be read, or not at all."
+      "reason": "A database or production operation assembled indirectly \u2014 decoded, evaluated, or built inside another interpreter. Run it plainly so it can be read, or not at all."
     },
     {
       "id": "write-then-run",
       "$comment": "A script written this turn and immediately executed bypasses per-command inspection entirely.",
       "pattern": "\\b(bash|sh|zsh|node|python3?|deno|bun|\\./)\\s*\\S*\\b(prod|production)\\b\\S*\\.(sh|bash|js|mjs|cjs|ts|py)\\b",
-      "reason": "Executing a script file whose name suggests it targets production. The guard cannot inspect what is inside a file — a human must run this."
+      "reason": "Executing a script file whose name suggests it targets production. The guard cannot inspect what is inside a file \u2014 a human must run this."
     }
   ],
-
   "allowLocalhost": [
     "localhost",
     "127.0.0.1",
@@ -100,11 +99,10 @@
     "0.0.0.0",
     "host.docker.internal"
   ],
-
   "$notes": [
     "A denylist cannot be complete. It is the third line of defence, not the first.",
     "The first is that production write credentials do not exist on this machine.",
     "The second is that the production role has no write grants, enforced by the database itself.",
-    "If a pattern here fires on legitimate work, do not weaken it silently — record the exception in docs/decisions/."
+    "If a pattern here fires on legitimate work, do not weaken it silently \u2014 record the exception in docs/decisions/."
   ]
 }

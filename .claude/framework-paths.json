@@ -1,6 +1,5 @@
 {
   "$comment": "Single source of truth for which paths belong to Trellis rather than to your project. Read by the map generator, the linter configs in setup/, and the integrity check. Add to this rather than repeating the list anywhere else.",
-
   "owned": [
     ".claude/",
     ".githooks/",
@@ -9,10 +8,18 @@
     "trellis.schema.json",
     "trellis.json"
   ],
-
   "$note": "trellis.json is listed because it is Trellis's own declaration format, even though its contents are yours. Your project's source, tests, docs/specs and docs/mockups are never framework-owned.",
-
-  "excludeFromLint": [".claude", ".githooks", "setup", "stacks"],
-
-  "$lintNote": "Trellis ships scripts in Python and bash. A project that adds a linter would otherwise fail its very first lint run on files it does not own and cannot reasonably be asked to fix. setup/ ships ready-made exclusion configs for common linters."
+  "excludeFromLint": [
+    ".claude",
+    ".githooks",
+    "setup",
+    "stacks"
+  ],
+  "$lintNote": "Trellis ships scripts in Python and bash. A project that adds a linter would otherwise fail its very first lint run on files it does not own and cannot reasonably be asked to fix. setup/ ships ready-made exclusion configs for common linters.",
+  "generated": [
+    "docs/map/OVERVIEW.md",
+    "docs/handoff/LATEST.md",
+    "docs/runs/DIGEST.md"
+  ],
+  "$generatedNote": "Files Trellis writes rather than people. They conflict on every concurrent branch and the conflict is never meaningful, because there is a canonical resolution: regenerate. .gitattributes routes them to a merge driver that does exactly that. check-integrity asserts this list and .gitattributes agree, so adding a generated file without an entry is caught rather than discovered during a merge."
 }

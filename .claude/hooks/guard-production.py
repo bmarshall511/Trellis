@@ -23,6 +23,22 @@ REPO_ROOT = os.path.abspath(os.path.join(HOOK_DIR, "..", ".."))
 STACK_NAME = re.compile(r"[a-z0-9][a-z0-9-]*\Z")
 ENV_PREFIX = re.compile(r"^(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|\S*)\s+)+")
 
+# Some commands exist to RECORD TEXT. Their message argument is prose a human wrote, not an instruction
+# to a machine — so a commit message describing a dangerous command is not a dangerous command.
+#
+# Narrow on purpose. `psql -c "DROP TABLE users"` is also a quoted string, and there the quoted text IS
+# the instruction. The distinction is the verb, not the quoting: these commands cannot execute their
+# argument, so nothing inside it can be executed.
+PROSE_COMMANDS = re.compile(
+    r"^(?:git\s+(?:commit|tag|merge|revert|stash|notes)|"
+    r"gh\s+(?:pr|issue|release)\s+\w+)\b", re.I)
+
+PROSE_ARGS = re.compile(
+    r"(?:-m|--message|--title|--body|--subject|--notes)(?:=|\s+)"
+    r"(\"[^\"]*\"|'[^']*'|\S+)", re.I)
+
+HEREDOC = re.compile(r"<<-?\s*'?(\w+)'?.*?^\1$", re.M | re.S)
+
 
 def load_json(path):
     try:
@@ -53,7 +69,13 @@ def normalise(command):
     Collapse line continuations and whitespace, then also test a copy with leading environment
     assignments removed -- `LEFTHOOK=0 git commit` is otherwise invisible to a command-name match.
     """
-    flat = re.sub(r"\s+", " ", command.replace("\\\n", " ")).strip()
+    # Remove prose before flattening, because a heredoc body is only identifiable while newlines exist.
+    text = command
+    if PROSE_COMMANDS.match(text.lstrip()):
+        text = HEREDOC.sub(" ", text)
+        text = PROSE_ARGS.sub(" ", text)
+
+    flat = re.sub(r"\s+", " ", text.replace("\\\n", " ")).strip()
     return {flat, ENV_PREFIX.sub("", flat)}
 
 

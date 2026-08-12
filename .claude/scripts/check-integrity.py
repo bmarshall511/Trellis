@@ -231,6 +231,22 @@ for name in listdir(stacks_dir):
     if os.path.exists(extractor) and not os.access(extractor, os.X_OK):
         note(f"stacks/{name}/extract-map.py is not executable")
 
+# ---------------------------------------------------------------- generated files
+# The list and .gitattributes must agree, or a generated file gains a conflict nobody expects.
+_paths = load_json(os.path.join(CLAUDE, "framework-paths.json")) or {}
+_generated = _paths.get("generated", [])
+_attributes = read(os.path.join(ROOT, ".gitattributes"))
+for _path in _generated:
+    if _path not in _attributes:
+        fail("%s is listed as generated but has no .gitattributes entry — it will conflict on every "
+             "concurrent branch" % _path)
+for _line in _attributes.splitlines():
+    if "merge=trellis-generated" in _line:
+        _declared = _line.split()[0]
+        if _declared not in _generated:
+            fail("%s has a .gitattributes merge entry but is not listed in framework-paths.json"
+                 % _declared)
+
 # ---------------------------------------------------------------- docs scaffolding
 for required in ("docs/specs/_template.md", "trellis.schema.json", "README.md", "stacks/README.md"):
     if not os.path.exists(os.path.join(ROOT, required)):
