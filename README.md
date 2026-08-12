@@ -32,20 +32,26 @@ percentage — coverage measures which lines ran, not which promises hold. A hoo
 ending its turn while any gate is red, so "Claude says it's done" becomes "Claude proved it's done".
 
 **Production cannot be damaged.**
-Enforced by what exists rather than by what the agent was told. A guard blocks 31 dangerous command
-shapes and catches the evasions — environment-variable prefixes, pipes, base64. It is the third line of
-defence and the weakest; the first is that production write credentials never exist on the machine.
+Enforced by what exists rather than by what the agent was told. A guard catches destructive commands
+and the ways they get disguised — environment-variable prefixes, pipes, base64, command substitution
+inside an argument that looks like prose. Stack modules add their own patterns, loaded only when that
+stack is in use.
 
-**Work can run unattended, and cannot lie about it.**
-A run implements one spec on its own branch with no human present, and ends in exactly one of four
-states: done, blocked, failed, or tampered. The verdict comes from the gates and the coverage — never
-from what the agent says. It cannot publish, merge, install dependencies, or edit its own guardrails,
-and if the guardrail files change during a run, every other result from that run is discarded.
+It is the third line of defence and the weakest, and the file says so: a denylist can never be
+complete. The first line is that production write credentials never exist on the machine; the second
+is that the production role has no write grants.
 
-A run can merge itself into the default branch — set `autonomy.mayMerge` — but only through one
-audited path that re-runs the gates on the branch, requires every acceptance criterion covered, asks
-the risk classifier, and re-checks the gates *after* merging, because a clean merge of two green
-branches can still be broken. Ad-hoc pushes to the default branch stay blocked.
+**Work runs unattended, end to end, and cannot lie about it.**
+A run takes one spec and does the whole job with nobody present: branch, implement, commit, push, open
+a pull request, wait for CI, fix whatever CI finds, merge, and move to the next spec. It ends in one of
+four states — done, blocked, failed, or tampered — and the verdict comes from the gates and the coverage
+mapper, never from what the agent says about itself. If the guardrail files change during a run, every
+other result from that run is discarded.
+
+What it may not do is narrow and deliberate: no force pushes, no history rewrites, no new dependencies,
+no editing its own gates or CI config. Merging is not on that list, because merging is not the dangerous
+step — merging something that has not passed the gates and the risk classifier is, and both run before
+the pull request is even opened.
 
 **Context survives the session.**
 A handoff is written before compaction, with a copy-pastable prompt. A generated map means an agent reads
@@ -67,7 +73,7 @@ have been forgeable.
 Three layers.
 
 **The core** is stack-agnostic and always active: ten skills written as principles, three read-only
-reviewer agents, nine commands, four hooks. It knows nothing about any specific technology.
+reviewer agents, ten commands, four hooks. It knows nothing about any specific technology.
 
 **Stack modules** hold what's known about specific technologies — version traps, quota cliffs, correct
 patterns, deprecations, and the dangerous commands that tooling makes possible. A module loads **only**
@@ -140,6 +146,57 @@ won't scaffold anything before you've agreed to the choices.
 | `/stack-add` | Research a technology and add it as a stack module |
 | `/run` | Run ready specs unattended, halting on the first blocker |
 
+### Running unattended
+
+Off by default. Turn it on in `trellis.json`:
+
+```json
+"autonomy": {
+  "enabled": true,
+  "mayMerge": true,
+  "mergeVia": "pull-request",
+  "maxRepairAttempts": 2,
+  "onBlocked": "halt"
+}
+```
+
+Then `.claude/scripts/run-queue.sh` works through every ready spec, delivering each before starting
+the next.
+
+| `mergeVia` | What happens |
+|---|---|
+| `local` | Merges on this machine, never contacts the host. Nothing is pushed. |
+| `pull-request` | Pushes the branch, opens a PR, polls CI, fixes what CI finds, merges when green, and fast-forwards local `main` so the next spec builds on it. |
+
+Both go through a single audited script that re-runs the gates on the branch, checks every acceptance
+criterion is covered, and asks the risk classifier first. The agent has no path to the default branch
+that skips those.
+
+**A run halts the queue rather than pressing on** when a spec blocks, when CI stays red past
+`maxRepairAttempts`, or when the risk classifier says a change needs a human. One thing to decide in
+the morning beats a pile of half-built branches — and if spec 3 turned out to be ambiguous, specs 4
+and 5 written the same evening probably are too.
+
+**What the classifier holds back** is in `stacks/github/risk-policy.json`: auth, migrations that drop
+or truncate, dependencies, CI config, payments, infrastructure, and public-facing content. Read it
+once and adjust it. Too strict and you wake to held branches; too loose and the gate is decorative.
+
+**Before the first overnight run**, check that your repository has required status checks on its
+default branch. Without them CI can pass and the merge still be refused, which the script reports but
+cannot fix. And run one spec while you are awake — the loop's job is to reproduce something you
+already trust.
+
+### Updating
+
+```bash
+.claude/scripts/trellis-update.sh --check   # what would change
+.claude/scripts/trellis-update.sh           # apply it
+```
+
+Framework files are replaced wholesale; your own files are never touched, and `trellis.json` keeps its
+contents. It reads the file set from the *upstream* manifest rather than a list written down here,
+because a list written down here would be wrong within a month.
+
 ### Layout
 
 ```
@@ -171,18 +228,20 @@ production guard in this repo allowed everything through, and only a test caught
 ## Verifying it
 
 ```bash
-.claude/hooks/tests/run.py                   # 51 production-guard cases
-.claude/scripts/tests/run-secret-tests.py    # 22 secret-scanner cases
+.claude/hooks/tests/run.py                   # 94 production-guard cases
+.claude/scripts/tests/run-secret-tests.py    # 26 secret-scanner cases
+.claude/scripts/tests/run-loop-tests.sh      #  6 unattended-run scenarios
+.claude/scripts/tests/run-merge-tests.sh     # 10 local-merge cases
+.claude/scripts/tests/run-mockup-tests.sh    #  8 approval-lock cases
+.claude/scripts/tests/run-integrity-tests.sh # 11 dangling-reference cases
+.claude/lib/tests/test-frontmatter.py        # 20 frontmatter-parser cases
+stacks/github/tests/run-risk-tests.py        # 32 risk-classification cases
+stacks/github/tests/run-deliver-tests.sh     # 11 pull-request delivery cases
+
 .claude/scripts/check-integrity.py           # cross-references resolve
 .claude/scripts/spec-lint.py                 # specs meet the readiness checklist
 .claude/scripts/spec-coverage.py             # every criterion has a test
 .claude/scripts/build-map.py --check         # map is current
-.claude/scripts/tests/run-loop-tests.sh      # 6 unattended-run scenarios
-stacks/github/tests/run-risk-tests.py        # 32 risk-classification cases
-.claude/lib/tests/test-frontmatter.py        # 20 frontmatter-parser cases
-.claude/scripts/tests/run-mockup-tests.sh    # 8 approval-lock cases
-.claude/scripts/tests/run-integrity-tests.sh # 11 dangling-reference cases
-.claude/scripts/tests/run-merge-tests.sh     # 10 automatic-merge cases
 ```
 
 The guard suite is the one to extend when you find a hole. Every rule in it exists because something
@@ -205,11 +264,19 @@ integrity hashes and would have blocked the first commit of any Node project.
 
 The unattended runner is tested against six scenarios, three of them adversarial: an agent that claims
 success with a gate red, one that claims success with a criterion untested, and one that disables the
-gates and then claims success. All three are caught. The GitHub module's risk classifier — which decides
-what may merge without review — is tested against 32 cases, including that an additive migration is
-auto-mergeable while the same file containing `drop column` is not.
+gates and then claims success. All three are caught. The risk classifier — which decides what may merge
+without review — is tested against 32 cases, including that an additive migration is auto-mergeable
+while the same file containing `drop column` is not. Pull-request delivery is tested against 11 more,
+of which ten are ways it should stop rather than merge.
 
-What still hasn't happened is a real overnight run against a real model, or use at any scale.
+Trellis has also been used on a real project by someone other than its author, which found three
+further defects — six copies of one parser sharing a bug, an approval lock that missed brand assets,
+and an integrity check reporting "all references resolve" while a reference dangled. All three were
+the same shape, and that shape is now written into the `clean-code` skill.
+
+**What still hasn't happened is a real overnight run against a real model.** The whole delivery loop
+is verified against mocks. The first live run will find something — most likely around branch
+protection, which the script reports but cannot fix.
 
 Stack modules are the natural contribution: self-contained, they don't touch the core, and their value is
 entirely in being current.
