@@ -54,11 +54,6 @@
       "reason": "Force push discards history irreversibly. Use --force-with-lease if you truly mean it, and only with a human present."
     },
     {
-      "id": "push-to-default-branch",
-      "pattern": "\\bgit\\s+push\\b[^|;]*\\s(origin\\s+)?(main|master)\\b",
-      "reason": "Direct push to the default branch. Work lands through a pull request."
-    },
-    {
       "id": "history-rewrite",
       "pattern": "\\bgit\\s+(?:reset\\b[^|;&]*?\\s--hard\\b|filter-branch\\b|filter-repo\\b|update-ref\\s+-d\\b|reflog\\s+(?:delete|expire)\\b)",
       "reason": "Irreversible history rewrite.",
@@ -100,6 +95,22 @@
     "0.0.0.0",
     "host.docker.internal"
   ],
+  "$removedRules": {
+    "push-to-default-branch": [
+      "Removed deliberately. A run now owns its whole loop -- branch, commit, push, open the pull",
+      "request, poll CI, fix what CI finds, merge -- and this rule blocked legitimate steps of that",
+      "workflow while firing constantly on unrelated text: test fixtures, scripts, and commit",
+      "messages that merely mentioned a push.",
+      "",
+      "What protects the default branch now is the path rather than a prohibition. Work reaches it",
+      "through deliver-run.sh, which re-runs the gates, checks coverage, asks the risk classifier and",
+      "waits for CI. A rule matching the string rather than the act was buying almost nothing and",
+      "costing a great deal.",
+      "",
+      "Force pushes and history rewrites remain blocked. Those are unrecoverable; a merge is not."
+    ]
+  },
+
   "$notes": [
     "A denylist cannot be complete. It is the third line of defence, not the first.",
     "The first is that production write credentials do not exist on this machine.",

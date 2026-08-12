@@ -67,14 +67,33 @@ for SPEC in "${QUEUE[@]}"; do
   CODE=$?
   case $CODE in
     0)
-      # Merge only if the project has opted in. merge-run.sh re-checks everything itself; it does not
-      # trust this script's judgement that the run went well, or the run's judgement either.
-      if .claude/scripts/merge-run.sh "$SPEC" >/dev/null 2>&1; then
-        RESULTS+=("$SPEC DONE, merged")
-      elif grep -q '"mayMerge": *true' trellis.json 2>/dev/null; then
-        RESULTS+=("$SPEC DONE, held — see .claude/scripts/merge-run.sh $SPEC")
-      else
+      # Deliver only if the project opted in. Both scripts re-check everything themselves; neither
+      # trusts this script's view that the run went well, nor the run's view of itself.
+      VIA="$(python3 -c "
+import json
+print((json.load(open('trellis.json')).get('autonomy') or {}).get('mergeVia', 'local'))
+" 2>/dev/null || echo local)"
+      MAY="$(python3 -c "
+import json
+print(str((json.load(open('trellis.json')).get('autonomy') or {}).get('mayMerge', False)).lower())
+" 2>/dev/null || echo false)"
+
+      if [ "$MAY" != "true" ]; then
         RESULTS+=("$SPEC DONE")
+      elif [ "$VIA" = "pull-request" ]; then
+        echo "  delivering via pull request…"
+        stacks/github/scripts/deliver-run.sh "$SPEC"
+        case $? in
+          0) RESULTS+=("$SPEC DONE, merged via PR") ;;
+          3) RESULTS+=("$SPEC DONE, PR open — needs a human")
+             echo; echo "Halting: $SPEC needs review before it can merge."; break ;;
+          *) RESULTS+=("$SPEC DONE, PR open — CI failed or merge refused")
+             echo; echo "Halting: $SPEC could not be delivered."; break ;;
+        esac
+      elif .claude/scripts/merge-run.sh "$SPEC" >/dev/null 2>&1; then
+        RESULTS+=("$SPEC DONE, merged locally")
+      else
+        RESULTS+=("$SPEC DONE, held — see .claude/scripts/merge-run.sh $SPEC")
       fi
       ;;
     2) RESULTS+=("$SPEC BLOCKED"); echo; echo "Halting: $SPEC blocked."; break ;;

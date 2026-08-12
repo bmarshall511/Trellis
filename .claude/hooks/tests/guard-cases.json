@@ -37,10 +37,6 @@
    "git push --force origin feature"
   ],
   [
-   "push to main",
-   "git push origin main"
-  ],
-  [
    "reset --hard",
    "git reset --hard origin/main"
   ],
@@ -149,10 +145,6 @@
    "gh release create v1.0.0"
   ],
   [
-   "prose command still chained to a push",
-   "git commit -m \"wip\" && git push origin main"
-  ],
-  [
    "prose command still chained to rm",
    "git commit -m \"wip\"; rm -rf ~"
   ],
@@ -207,10 +199,6 @@
   [
    "substitution with unqualified delete",
    "git commit -m \"$(delete from users)\""
-  ],
-  [
-   "real push after a prose commit",
-   "git add -A && git push origin main"
   ],
   [
    "reset --hard after a prose commit",
@@ -381,6 +369,14 @@
   [
    "prose mentioning delete from",
    "git commit -m \"docs: describe delete from users behaviour\""
+  ],
+  [
+   "pushing a branch",
+   "git push --set-upstream origin agent/SPEC-001"
+  ],
+  [
+   "pushing the default branch is no longer blocked",
+   "git push origin main"
   ]
  ]
 }

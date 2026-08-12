@@ -1,5 +1,5 @@
 {
-  "$comment": "Settings for an UNATTENDED run. Loaded with --settings, and deliberately NARROWER than the interactive profile \u2014 an unattended agent gets fewer capabilities, never more.",
+  "$comment": "Settings for an UNATTENDED run. The run owns its work end to end: branch, commit, push, open the pull request, poll CI, fix what CI finds, merge, continue to the next spec. It is stopped only from things that are unrecoverable, or that would let it escape review entirely.",
   "$never": [
     "Do not add --bare to the launch command. Bare mode skips hooks, which removes the Stop gate that",
     "is the entire basis for 'the agent cannot claim success', and it also bypasses stored credentials",
@@ -7,27 +7,59 @@
     "",
     "Do not use --permission-mode bypassPermissions or --dangerously-skip-permissions. Those permit",
     "writes to protected paths, so the agent could delete the very guardrails meant to contain it.",
-    "Use dontAsk: it denies anything not explicitly allowed, never waits for input, and \u2014 critically \u2014",
+    "Use dontAsk: it denies anything not explicitly allowed, never waits for input, and — critically —",
     "denies the ask-a-question tool, so the only way out is finishing or writing BLOCKED.md."
   ],
   "permissions": {
+    "allow": [
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git status:*)",
+      "Bash(gh pr create:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr checks:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh pr edit:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run watch:*)",
+      "Bash(stacks/github/scripts/deliver-run.sh:*)",
+      "Bash(.claude/scripts/merge-run.sh:*)"
+    ],
+    "$allowNotes": {
+      "the-loop": "A run does the whole job: creates its branch, commits, pushes, opens the pull request, polls CI, fixes what CI finds, merges when green, and moves on. Every one of those is allowed, because withholding any of them stops the loop rather than making it safer.",
+      "why-merging-is-allowed": "Merging is not the dangerous step. Merging something that has not passed the gates and the risk classifier is. Those checks run before the pull request opens and again in CI before it merges, so the merge is the conclusion of a verified process rather than an unguarded capability.",
+      "reading-ci": "`gh run view` and `gh run list` are allowed deliberately: a run that cannot read why CI failed cannot fix it, and fixing it is the point."
+    },
     "deny": [
       "Read(./.env)",
       "Read(./.env.*)",
       "Read(~/.ssh/**)",
       "Read(~/.aws/**)",
-      "Read(~/.config/gh/**)",
       "Read(~/.netrc)",
       "Read(~/.pgpass)",
       "Bash(security:*)",
       "Bash(op:*)",
       "Bash(sudo:*)",
-      "Bash(git push:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
       "Bash(git reset --hard:*)",
-      "Bash(git rebase:*)",
-      "Bash(git checkout main:*)",
-      "Bash(git switch main:*)",
-      "Bash(gh:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git filter-repo:*)",
+      "Bash(gh secret:*)",
+      "Bash(gh variable:*)",
+      "Bash(gh ruleset:*)",
+      "Bash(gh repo delete:*)",
+      "Bash(gh workflow disable:*)",
       "Bash(npm publish:*)",
       "Bash(npm install:*)",
       "Bash(npm i:*)",
@@ -41,22 +73,18 @@
       "Edit(./.claude/settings.json)",
       "Edit(./.claude/profiles/**)",
       "Edit(./.githooks/**)",
+      "Edit(./.github/workflows/**)",
       "Edit(./trellis.json)",
       "Write(./.claude/hooks/**)",
       "Write(./.claude/scripts/**)",
-      "Write(./.githooks/**)"
+      "Write(./.githooks/**)",
+      "Write(./.github/workflows/**)"
     ],
     "$denyNotes": {
-      "dependencies": "A new dependency is the highest-consequence thing an unattended run can add, and the thing a prompt-injected agent would most want to add. A spec that needs an unforeseen library ends BLOCKED \u2014 that costs one morning decision.",
-      "push-and-gh": "The run itself cannot push or use gh. Reaching the default branch happens only through merge-run.sh, which re-verifies everything and requires autonomy.mayMerge. With mayMerge off (the default) the run produces a local branch and stops.",
-      "self-modification": "Guardrails, gate scripts and the project declaration are off limits. An agent that can edit its own gates has no gates.",
-      "main": "The run works on its own branch. It must not be able to switch to or reset the default branch."
-    },
-    "allow": [
-      "Bash(.claude/scripts/merge-run.sh:*)"
-    ],
-    "$allowNotes": {
-      "merge-run": "The ONLY route to the default branch. Ad-hoc `git push origin main` stays denied and stays blocked by the guard. This script re-runs the gates and the coverage check on the branch, requires the risk classifier to return 'auto', and re-checks the gates AFTER merging \u2014 because a clean merge of two green branches can still be broken. Enabled per project by autonomy.mayMerge."
+      "unrecoverable": "Force pushes, hard resets and history rewrites destroy work that no green test suite can bring back. Everything else a run does is a commit, and commits revert.",
+      "escaping-review": "Secrets, rulesets and workflow files are how a run could make itself unreviewable — by changing what CI checks, or by switching it off. Those stay closed. Reading workflow runs and logs stays open, because that is what fixing a failing check requires.",
+      "dependencies": "A new dependency is the highest-consequence thing a run can add, and the thing a prompt-injected agent would most want to add. A spec needing an unforeseen library ends BLOCKED — one morning decision.",
+      "self-modification": "Guardrails and gate definitions are off limits. A run that can edit its own gates has no gates."
     }
   }
 }

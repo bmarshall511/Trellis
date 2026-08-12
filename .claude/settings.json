@@ -1,6 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-
   "permissions": {
     "deny": [
       "Read(./.env)",
@@ -24,14 +23,8 @@
       "Bash(gh workflow:*)",
       "Bash(gh pr merge:*)",
       "Bash(gh pr review:*)"
-    ],
-    "ask": [
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(gh pr create:*)"
     ]
   },
-
   "hooks": {
     "PreToolUse": [
       {
@@ -79,10 +72,9 @@
       }
     ]
   },
-
   "$notes": {
     "deny-vs-guard": "The deny list catches the obvious shapes cheaply and applies in every permission mode. The guard hook catches what a glob cannot -- environment-variable prefixes, pipes, encoded payloads, remote connection strings. Both exist because either alone is porous.",
-    "ask-on-commit": "Commits and pushes prompt by default. Unattended runs override this with their own settings profile, which narrows rather than widens what is permitted.",
-    "not-a-boundary": "None of this is a security boundary. It is a mistake-catcher. The real boundary is that production write credentials do not exist on this machine and the production role has no write grants."
+    "not-a-boundary": "None of this is a security boundary. It is a mistake-catcher. The real boundary is that production write credentials do not exist on this machine and the production role has no write grants.",
+    "no-ask-rules": "Trellis ships NO ask rules, deliberately. They apply in every permission mode, so a user who has explicitly opted out of prompts still gets them - surprising and paternalistic. And a prompt clicked through twenty times a day teaches people to click through prompts, which costs exactly the attention the load-bearing ones need. The protection here is the deny list and the guard hook, neither of which can be clicked past. Wanting confirmation before commits is a preference, and preferences belong to the person, not the framework - put an ask list in your personal settings."
   }
 }

@@ -147,6 +147,14 @@ def validate(config):
         for flag in ("mayMerge", "pushAfterMerge"):
             if flag in autonomy and not isinstance(autonomy[flag], bool):
                 error(f"autonomy.{flag} must be true or false")
+        via = autonomy.get("mergeVia")
+        if via is not None and via not in ("local", "pull-request"):
+            error("autonomy.mergeVia must be 'local' or 'pull-request'")
+        if via == "pull-request" and not autonomy.get("mayMerge"):
+            error("autonomy.mergeVia is 'pull-request' but mayMerge is not set — nothing would deliver.")
+        if via == "pull-request" and not os.path.isdir(os.path.join(ROOT, "stacks", "github")):
+            error("autonomy.mergeVia is 'pull-request' but stacks/github is not present — "
+                  "the delivery script lives there.")
         if autonomy.get("mayMerge"):
             warn("autonomy.mayMerge is on — a completed run may merge itself into the default branch. "
                  "What protects you is the risk classifier and the gates, not a human at the keyboard. "

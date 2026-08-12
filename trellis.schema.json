@@ -175,6 +175,15 @@
           "type": "boolean",
           "description": "Whether to push the default branch after a successful automatic merge. Separate from mayMerge so a run can integrate locally overnight while you decide when anything leaves the machine.",
           "default": false
+        },
+        "mergeVia": {
+          "type": "string",
+          "description": "How a completed run reaches the default branch. 'local' merges on this machine and never contacts the host. 'pull-request' pushes the branch, opens a PR, waits for checks, merges when green, and syncs the local default branch so the next spec starts from the merged state. Both require mayMerge, and both go through a single audited script \u2014 the agent is never given push, PR or merge commands directly.",
+          "enum": [
+            "local",
+            "pull-request"
+          ],
+          "default": "local"
         }
       }
     }

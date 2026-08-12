@@ -49,6 +49,12 @@ PROSE_ARGS = re.compile(
 
 HEREDOC = re.compile(r"<<-?\s*'?(\w+)'?.*?^\1$", re.M | re.S)
 
+# A heredoc redirected INTO A FILE is data being written, not commands being run. `cat > x.sh <<EOF`
+# writes text; nothing in that text executes. Piping one to an interpreter — `bash <<EOF` — does
+# execute, and is left alone.
+HEREDOC_TO_FILE = re.compile(
+    r"(?:^|[|;&]\s*)(?:cat|tee|printf|echo)?\s*>{1,2}\s*[\w./~$-]+\s*<<-?\s*'?\w+'?")
+
 
 def load_json(path):
     try:
@@ -93,8 +99,9 @@ def normalise(command):
 
     # Heredoc bodies may contain && or ;, so they must be handled before splitting on separators.
     text = command.replace("\\\n", " ")
-    if HEREDOC.search(text) and PROSE_COMMANDS.match(text.lstrip()):
-        text = strip_prose(text)
+    if HEREDOC.search(text) and (PROSE_COMMANDS.match(text.lstrip())
+                                 or HEREDOC_TO_FILE.search(text)):
+        text = HEREDOC.sub(" ", text) if HEREDOC_TO_FILE.search(text) else strip_prose(text)
     text = "".join(part if SEGMENT.fullmatch(part) else strip_prose(part)
                    for part in SEGMENT.split(text))
 
