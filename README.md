@@ -42,6 +42,11 @@ states: done, blocked, failed, or tampered. The verdict comes from the gates and
 from what the agent says. It cannot publish, merge, install dependencies, or edit its own guardrails,
 and if the guardrail files change during a run, every other result from that run is discarded.
 
+A run can merge itself into the default branch — set `autonomy.mayMerge` — but only through one
+audited path that re-runs the gates on the branch, requires every acceptance criterion covered, asks
+the risk classifier, and re-checks the gates *after* merging, because a clean merge of two green
+branches can still be broken. Ad-hoc pushes to the default branch stay blocked.
+
 **Context survives the session.**
 A handoff is written before compaction, with a copy-pastable prompt. A generated map means an agent reads
 an overview instead of the whole codebase.
@@ -171,6 +176,7 @@ stacks/github/tests/run-risk-tests.py        # 32 risk-classification cases
 .claude/lib/tests/test-frontmatter.py        # 20 frontmatter-parser cases
 .claude/scripts/tests/run-mockup-tests.sh    # 8 approval-lock cases
 .claude/scripts/tests/run-integrity-tests.sh # 11 dangling-reference cases
+.claude/scripts/tests/run-merge-tests.sh     # 10 automatic-merge cases
 ```
 
 The integrity check exists because each piece can be individually correct while the whole is broken — a

@@ -144,6 +144,18 @@ def validate(config):
         blocked = autonomy.get("onBlocked")
         if blocked is not None and blocked not in ("halt", "skip"):
             error("autonomy.onBlocked must be 'halt' or 'skip'")
+        for flag in ("mayMerge", "pushAfterMerge"):
+            if flag in autonomy and not isinstance(autonomy[flag], bool):
+                error(f"autonomy.{flag} must be true or false")
+        if autonomy.get("mayMerge"):
+            warn("autonomy.mayMerge is on — a completed run may merge itself into the default branch. "
+                 "What protects you is the risk classifier and the gates, not a human at the keyboard. "
+                 "Confirm the classifier's policy matches what you actually consider unreviewable.")
+        if autonomy.get("pushAfterMerge") and not autonomy.get("mayMerge"):
+            error("autonomy.pushAfterMerge is set but mayMerge is not — there would be nothing to push.")
+        if autonomy.get("mayMerge") and not autonomy.get("enabled"):
+            error("autonomy.mayMerge is set but autonomy.enabled is not. Merging applies to unattended "
+                  "runs; with autonomy off there is no run to merge.")
         if autonomy.get("enabled") and not any((config.get("gates") or {}).get(n) for n in GATES):
             error("autonomy is enabled but no gates are declared. An unattended run with nothing to "
                   "verify against cannot know whether it succeeded.")

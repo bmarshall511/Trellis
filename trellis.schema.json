@@ -4,7 +4,11 @@
   "title": "Trellis project declaration",
   "description": "Declares what this project is, what it is built with, and which quality gates apply. Trellis reads this at session start to decide which stack modules to load and which parts of the process are active.",
   "type": "object",
-  "required": ["name", "type", "gates"],
+  "required": [
+    "name",
+    "type",
+    "gates"
+  ],
   "additionalProperties": false,
   "properties": {
     "name": {
@@ -19,26 +23,55 @@
     "type": {
       "type": "string",
       "description": "Determines which parts of the Trellis process are active. 'app' enables mockups and the accessibility and performance gates; the others do not.",
-      "enum": ["app", "service", "cli", "library"]
+      "enum": [
+        "app",
+        "service",
+        "cli",
+        "library"
+      ]
     },
     "stacks": {
       "type": "array",
       "description": "Technology modules to load from stacks/. Only these are read into context; everything else costs nothing. Names must match a directory under stacks/.",
-      "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]*$"
+      },
       "uniqueItems": true,
       "default": []
     },
     "gates": {
       "type": "object",
-      "description": "The verification contract. Every gate is either a command string that must exit non-zero on failure, or null to declare it deliberately absent. A gate must never be silently missing — absence is a declaration.",
-      "required": ["types", "lint", "test", "a11y", "perf"],
+      "description": "The verification contract. Every gate is either a command string that must exit non-zero on failure, or null to declare it deliberately absent. A gate must never be silently missing \u2014 absence is a declaration.",
+      "required": [
+        "types",
+        "lint",
+        "test",
+        "a11y",
+        "perf"
+      ],
       "additionalProperties": false,
       "properties": {
-        "types": { "$ref": "#/definitions/gate", "description": "Type checking. null only for untyped languages." },
-        "lint": { "$ref": "#/definitions/gate", "description": "Linting and formatting." },
-        "test": { "$ref": "#/definitions/gate", "description": "Full test suite." },
-        "a11y": { "$ref": "#/definitions/gate", "description": "Accessibility. Required when type is 'app'." },
-        "perf": { "$ref": "#/definitions/gate", "description": "Performance budgets. Required when type is 'app'." }
+        "types": {
+          "$ref": "#/definitions/gate",
+          "description": "Type checking. null only for untyped languages."
+        },
+        "lint": {
+          "$ref": "#/definitions/gate",
+          "description": "Linting and formatting."
+        },
+        "test": {
+          "$ref": "#/definitions/gate",
+          "description": "Full test suite."
+        },
+        "a11y": {
+          "$ref": "#/definitions/gate",
+          "description": "Accessibility. Required when type is 'app'."
+        },
+        "perf": {
+          "$ref": "#/definitions/gate",
+          "description": "Performance budgets. Required when type is 'app'."
+        }
       }
     },
     "standards": {
@@ -49,7 +82,11 @@
         "accessibility": {
           "type": "string",
           "description": "Conformance target. 'AA' is the floor. 'AA+' means AA everywhere plus a named subset of AAA criteria listed in docs/decisions/.",
-          "enum": ["AA", "AA+", "AAA"],
+          "enum": [
+            "AA",
+            "AA+",
+            "AAA"
+          ],
           "default": "AA"
         },
         "coverage": {
@@ -57,7 +94,11 @@
           "description": "Trellis does not enforce a coverage percentage. It enforces that every acceptance criterion in every spec maps to at least one test. Percentages are advisory only.",
           "additionalProperties": false,
           "properties": {
-            "advisory": { "type": "number", "minimum": 0, "maximum": 100 }
+            "advisory": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
           }
         },
         "specMaxMinutes": {
@@ -76,7 +117,7 @@
       "properties": {
         "readAccess": {
           "type": "boolean",
-          "description": "Whether the agent may run read-only queries against production for debugging. Enforced by database grants, never by instruction — the credential must be incapable of writing.",
+          "description": "Whether the agent may run read-only queries against production for debugging. Enforced by database grants, never by instruction \u2014 the credential must be incapable of writing.",
           "default": false
         },
         "credentialCommand": {
@@ -90,22 +131,32 @@
       "description": "Controls for unattended runs.",
       "additionalProperties": false,
       "properties": {
-        "enabled": { "type": "boolean", "default": false },
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
         "maxRepairAttempts": {
           "type": "integer",
           "description": "How many times a run may fix and retry a failing gate before stopping and writing BLOCKED.",
-          "minimum": 0, "maximum": 5, "default": 2
+          "minimum": 0,
+          "maximum": 5,
+          "default": 2
         },
         "onBlocked": {
           "type": "string",
           "description": "What happens to the remaining queue when a spec blocks. 'halt' leaves one thing to review rather than a pile of half-finished work.",
-          "enum": ["halt", "skip"],
+          "enum": [
+            "halt",
+            "skip"
+          ],
           "default": "halt"
         },
         "requiresApproval": {
           "type": "array",
           "description": "Glob patterns whose modification always requires a human, no matter how green the gates are.",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "default": [
             "**/migrations/**",
             "**/auth/**",
@@ -114,6 +165,16 @@
             "package.json",
             "trellis.json"
           ]
+        },
+        "mayMerge": {
+          "type": "boolean",
+          "description": "Whether a completed unattended run may merge itself into the default branch. Requires the run to have finished DONE, the gates to pass again on the branch, and the risk classifier (if a host module provides one) to return 'auto'. Ad-hoc pushes to the default branch remain blocked \u2014 merging happens only through .claude/scripts/merge-run.sh, which performs those checks.",
+          "default": false
+        },
+        "pushAfterMerge": {
+          "type": "boolean",
+          "description": "Whether to push the default branch after a successful automatic merge. Separate from mayMerge so a run can integrate locally overnight while you decide when anything leaves the machine.",
+          "default": false
         }
       }
     }
@@ -121,20 +182,42 @@
   "definitions": {
     "gate": {
       "oneOf": [
-        { "type": "string", "minLength": 1, "description": "Shell command. Must exit non-zero on failure." },
-        { "type": "null", "description": "Deliberately absent. Declaring null is a decision; omitting the key is an error." }
+        {
+          "type": "string",
+          "minLength": 1,
+          "description": "Shell command. Must exit non-zero on failure."
+        },
+        {
+          "type": "null",
+          "description": "Deliberately absent. Declaring null is a decision; omitting the key is an error."
+        }
       ]
     }
   },
   "allOf": [
     {
-      "if": { "properties": { "type": { "const": "app" } }, "required": ["type"] },
+      "if": {
+        "properties": {
+          "type": {
+            "const": "app"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
       "then": {
         "properties": {
           "gates": {
             "properties": {
-              "a11y": { "type": "string", "minLength": 1 },
-              "perf": { "type": "string", "minLength": 1 }
+              "a11y": {
+                "type": "string",
+                "minLength": 1
+              },
+              "perf": {
+                "type": "string",
+                "minLength": 1
+              }
             }
           }
         },

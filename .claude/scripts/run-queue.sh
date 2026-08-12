@@ -62,7 +62,17 @@ for SPEC in "${QUEUE[@]}"; do
   .claude/scripts/run-spec.sh "$SPEC" $DRY
   CODE=$?
   case $CODE in
-    0) RESULTS+=("$SPEC DONE") ;;
+    0)
+      # Merge only if the project has opted in. merge-run.sh re-checks everything itself; it does not
+      # trust this script's judgement that the run went well, or the run's judgement either.
+      if .claude/scripts/merge-run.sh "$SPEC" >/dev/null 2>&1; then
+        RESULTS+=("$SPEC DONE, merged")
+      elif grep -q '"mayMerge": *true' trellis.json 2>/dev/null; then
+        RESULTS+=("$SPEC DONE, held — see .claude/scripts/merge-run.sh $SPEC")
+      else
+        RESULTS+=("$SPEC DONE")
+      fi
+      ;;
     2) RESULTS+=("$SPEC BLOCKED"); echo; echo "Halting: $SPEC blocked."; break ;;
     *) RESULTS+=("$SPEC FAILED");  echo; echo "Halting: $SPEC failed.";  break ;;
   esac
