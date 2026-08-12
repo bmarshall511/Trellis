@@ -1,0 +1,30 @@
+{
+ "auto": [
+  ["ordinary source",        ["src/components/Button.tsx"]],
+  ["tests",                  ["tests/button.test.ts"]],
+  ["docs",                   ["docs/specs/SPEC-004-thing.md", "README.md"]],
+  ["styles",                 ["src/styles.css"]],
+  ["several ordinary files", ["src/a.ts", "src/b.ts", "tests/a.test.ts"]],
+  ["mockups",                ["docs/mockups/SPEC-004/page.html"]]
+ ],
+ "needsHuman": [
+  ["ci workflow",            [".github/workflows/ci.yml"]],
+  ["trellis guardrail hook", [".claude/hooks/verify-gate.py"]],
+  ["project declaration",    ["trellis.json"]],
+  ["git hooks",              [".githooks/pre-commit"]],
+  ["package.json",           ["package.json"]],
+  ["lockfile",               ["pnpm-lock.yaml"]],
+  ["auth code",              ["src/auth/session.ts"]],
+  ["middleware",             ["src/middleware.ts"]],
+  ["rls policy",             ["supabase/policies/posts.policy.sql"]],
+  ["env file",               [".env.production"]],
+  ["terraform",              ["infra/main.tf"]],
+  ["dockerfile",             ["Dockerfile"]],
+  ["billing",                ["src/billing/subscribe.ts"]],
+  ["stripe webhook",         ["src/webhooks/stripe.ts"]],
+  ["robots.txt",             ["public/robots.txt"]],
+  ["privacy policy",         ["src/app/privacy/page.tsx"]],
+  ["vercel config",          ["vercel.json"]],
+  ["one bad among many good",["src/a.ts", "src/b.ts", ".github/workflows/ci.yml"]]
+ ]
+}

@@ -123,6 +123,30 @@
   [
    "remote mysql -h",
    "mysql -h db.prod.example.com -u root app"
+  ],
+  [
+   "gh pr merge",
+   "gh pr merge --auto --squash 42"
+  ],
+  [
+   "gh pr review",
+   "gh pr review 42 --approve"
+  ],
+  [
+   "gh secret set",
+   "gh secret set DEPLOY_KEY --body xyz"
+  ],
+  [
+   "gh ruleset",
+   "gh ruleset edit --add-bypass-actor 1"
+  ],
+  [
+   "gh workflow run",
+   "gh workflow run deploy.yml"
+  ],
+  [
+   "gh release create",
+   "gh release create v1.0.0"
   ]
  ],
  "allow": [
@@ -205,6 +229,22 @@
   [
    "local mysql -h",
    "mysql -h localhost -u root app"
+  ],
+  [
+   "gh pr create",
+   "gh pr create --title x --body y"
+  ],
+  [
+   "gh pr view",
+   "gh pr view 42"
+  ],
+  [
+   "gh pr checks",
+   "gh pr checks 42 --watch"
+  ],
+  [
+   "gh run list",
+   "gh run list --limit 5"
   ]
  ]
 }

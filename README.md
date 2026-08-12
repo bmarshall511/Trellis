@@ -147,7 +147,7 @@ trellis.json        what this project is and what it's built with
 
 ## Adding a technology
 
-`stacks/` ships one worked module (Supabase) and a template. `/stack-add <name>` researches a technology
+`stacks/` ships two worked modules — Supabase and GitHub — plus a template. `/stack-add <name>` researches a technology
 against primary sources and writes the module.
 
 A module can contribute a skill, guard patterns, a map extractor and staged config. See
@@ -166,6 +166,7 @@ production guard in this repo allowed everything through, and only a test caught
 .claude/scripts/spec-coverage.py             # every criterion has a test
 .claude/scripts/build-map.py --check         # map is current
 .claude/scripts/tests/run-loop-tests.sh      # 6 unattended-run scenarios
+stacks/github/tests/run-risk-tests.py        # 32 risk-classification cases
 ```
 
 The integrity check exists because each piece can be individually correct while the whole is broken — a
@@ -185,7 +186,9 @@ integrity hashes and would have blocked the first commit of any Node project.
 
 The unattended runner is tested against six scenarios, three of them adversarial: an agent that claims
 success with a gate red, one that claims success with a criterion untested, and one that disables the
-gates and then claims success. All three are caught.
+gates and then claims success. All three are caught. The GitHub module's risk classifier — which decides
+what may merge without review — is tested against 32 cases, including that an additive migration is
+auto-mergeable while the same file containing `drop column` is not.
 
 What still hasn't happened is a real overnight run against a real model, or use at any scale.
 

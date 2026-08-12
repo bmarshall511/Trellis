@@ -1,0 +1,5 @@
+2026-08-11 — risk classification rules and gh command surface designed and tested against 32 cases.
+
+NOT verified against a live repository: branch-protection behaviour, auto-merge semantics, and whether
+rulesets require a paid plan on private repos. Check GitHub's own documentation and your repository
+settings before relying on the auto-merge half of this module.

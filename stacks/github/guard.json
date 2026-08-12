@@ -1,0 +1,30 @@
+{
+  "$comment": "GitHub commands an unattended run must never hold. Merged into the core guard when this stack is active. Every pattern has a test case in .claude/hooks/tests/guard-cases.json.",
+  "deny": [
+    {
+      "id": "gh-merge",
+      "pattern": "\\bgh\\s+pr\\s+(merge|review|close)\\b",
+      "reason": "Merging and approving are the human's half of the loop. An agent that can merge its own work has no review."
+    },
+    {
+      "id": "gh-secrets",
+      "pattern": "\\bgh\\s+(secret|variable)\\s+(set|delete)\\b",
+      "reason": "Writes deployment credentials."
+    },
+    {
+      "id": "gh-admin",
+      "pattern": "\\bgh\\s+(ruleset|repo\\s+edit|api\\s+.*(branch_protection|rulesets))",
+      "reason": "Changes branch protection or rulesets — the thing that enforces every other gate."
+    },
+    {
+      "id": "gh-workflow-run",
+      "pattern": "\\bgh\\s+workflow\\s+(run|enable|disable)\\b",
+      "reason": "Triggers or disables CI directly, bypassing the checks a pull request would run."
+    },
+    {
+      "id": "gh-release",
+      "pattern": "\\bgh\\s+release\\s+(create|delete|upload)\\b",
+      "reason": "Publishes. Outward-facing and hard to retract."
+    }
+  ]
+}

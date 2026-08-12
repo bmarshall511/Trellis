@@ -7,7 +7,7 @@ _No `trellis.json` — the project is not set up yet._
 
 7 project files, 0 of them code.
 
-_69 framework files (Trellis itself) are excluded — see `.claude/framework-paths.json`._
+_79 framework files (Trellis itself) are excluded — see `.claude/framework-paths.json`._
 
 ## Where things live
 
@@ -33,6 +33,6 @@ Last 30 days. Where the work is, and where regressions are most likely.
 
 ---
 
-Generated 2026-08-12 00:03 UTC from commit `47a3063`.
+Generated 2026-08-12 00:08 UTC from commit `e5f2440`.
 
 If this disagrees with the code, the code is right — regenerate with `.claude/scripts/build-map.py`.

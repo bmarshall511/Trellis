@@ -1,0 +1,95 @@
+{
+  "$comment": "Decides which changes may merge without a human. Checked into the repo so the policy is reviewable, and read by classify-risk.py. Paths are fnmatch globs against repo-relative paths.",
+
+  "$principle": [
+    "Fail closed. An unrecognised path is not automatically safe — it is judged by the default rule.",
+    "The question is never 'is this change good' (the gates answer that). It is 'if this change is",
+    "wrong, how bad is it, and can it be undone'. Anything hard to undo needs a human, however green."
+  ],
+
+  "defaultDecision": "auto",
+
+  "rules": [
+    {
+      "id": "ci-config",
+      "paths": [".github/workflows/*", ".github/actions/**", ".gitlab-ci.yml", "Jenkinsfile"],
+      "decision": "needs-human",
+      "reason": "Changes the thing that decides whether changes are safe. A run that can edit its own CI has no CI."
+    },
+    {
+      "id": "trellis-guardrails",
+      "paths": [".claude/hooks/**", ".claude/scripts/**", ".claude/settings.json",
+                ".claude/profiles/**", ".githooks/**", "trellis.json"],
+      "decision": "needs-human",
+      "reason": "Guardrails and gate definitions. Same reasoning as CI config."
+    },
+    {
+      "id": "destructive-migration",
+      "paths": ["**/migrations/**", "**/migrate/**", "db/**.sql", "supabase/migrations/**"],
+      "contentPatterns": [
+        "(?i)\\bdrop\\s+(table|column|schema|database|type|constraint)\\b",
+        "(?i)\\btruncate\\b",
+        "(?i)\\balter\\s+table\\s+\\S+\\s+drop\\b",
+        "(?i)\\bdelete\\s+from\\b(?![^;]*\\bwhere\\b)",
+        "(?i)\\bnot\\s+null\\b(?![^;]*\\bdefault\\b)"
+      ],
+      "decision": "needs-human",
+      "reason": "Irreversible or lock-taking schema change. Data removed by a migration is not recoverable from a green test suite."
+    },
+    {
+      "id": "migration",
+      "paths": ["**/migrations/**", "**/migrate/**", "db/**.sql", "supabase/migrations/**"],
+      "decision": "auto",
+      "reason": "Additive migration with no destructive statement. Auto-applies on merge; a snapshot is taken first."
+    },
+    {
+      "id": "auth-and-permissions",
+      "paths": ["**/auth/**", "**/authz/**", "**/permissions/**", "**/policies/**",
+                "**/*policy*.sql", "**/middleware.*", "**/proxy.*", "**/rls/**"],
+      "decision": "needs-human",
+      "reason": "Authorisation. A mistake here is silent, and the tests that would catch it are the ones most often missing."
+    },
+    {
+      "id": "security-headers",
+      "paths": ["**/csp*", "**/*headers*", "**/security.*", "vercel.json", "netlify.toml",
+                "**/nginx*.conf", "**/Caddyfile"],
+      "decision": "needs-human",
+      "reason": "Security headers and edge configuration. Weakening one is invisible in a diff review that is not looking for it."
+    },
+    {
+      "id": "dependencies",
+      "paths": ["package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock",
+                "requirements.txt", "pyproject.toml", "poetry.lock", "uv.lock",
+                "Gemfile", "Gemfile.lock", "go.mod", "go.sum", "Cargo.toml", "Cargo.lock",
+                "composer.json", "composer.lock"],
+      "decision": "needs-human",
+      "reason": "A new dependency is the highest-consequence thing a run can add, and the thing a prompt-injected agent would most want to add."
+    },
+    {
+      "id": "secrets-and-env",
+      "paths": ["**/.env*", "**/*.pem", "**/*.key", "**/secrets*", ".github/dependabot.yml"],
+      "decision": "needs-human",
+      "reason": "Credential-adjacent. Should not appear in a run's diff at all."
+    },
+    {
+      "id": "infrastructure",
+      "paths": ["**/*.tf", "**/*.tfvars", "**/Dockerfile*", "**/docker-compose*",
+                "**/k8s/**", "**/helm/**", "**/*.bicep"],
+      "decision": "needs-human",
+      "reason": "Infrastructure. Failure modes are expensive and slow to reverse."
+    },
+    {
+      "id": "payments",
+      "paths": ["**/billing/**", "**/payment*/**", "**/stripe/**", "**/checkout/**", "**/webhook*/**"],
+      "decision": "needs-human",
+      "reason": "Money. A wrong amount or a double charge is not fixable by reverting the commit."
+    },
+    {
+      "id": "public-content",
+      "paths": ["**/robots.txt", "**/sitemap*", "**/*.legal.*", "**/privacy*", "**/terms*",
+                "**/LICENSE*"],
+      "decision": "needs-human",
+      "reason": "Published claims and crawler policy. Wrong here is public before anyone notices."
+    }
+  ]
+}

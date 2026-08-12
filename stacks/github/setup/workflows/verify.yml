@@ -1,0 +1,74 @@
+# Trellis verification. Copy to .github/workflows/verify.yml
+#
+# ONE job with sequential steps, not a matrix of parallel ones. GitHub bills per job rounded up to the
+# whole minute, so five twenty-second jobs cost five minutes and one job costs one. Sharding optimises
+# wall-clock; you are paying for jobs.
+name: verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # classify-risk needs history to find the merge base
+
+      - name: Trellis integrity
+        run: |
+          .claude/scripts/check-integrity.py
+          .claude/scripts/validate-config.py
+          .claude/scripts/build-map.py --check
+
+      - name: Secrets
+        run: .claude/scripts/scan-secrets.py
+
+      - name: Specs
+        run: |
+          .claude/scripts/spec-lint.py --ready-only
+          .claude/scripts/spec-coverage.py
+
+      # Everything above is dependency-free and runs in seconds. Project gates come after, so a
+      # structural problem fails before anything slow starts.
+      - name: Project gates
+        run: |
+          python3 - <<'PY'
+          import json, subprocess, sys
+          gates = json.load(open("trellis.json")).get("gates") or {}
+          for name in ("types", "lint", "test", "a11y", "perf"):
+              command = gates.get(name)
+              if not command:
+                  print(f"::notice::gate '{name}' declared absent")
+                  continue
+              print(f"::group::{name}")
+              code = subprocess.run(command, shell=True).returncode
+              print("::endgroup::")
+              if code:
+                  print(f"::error::gate '{name}' failed")
+                  sys.exit(1)
+          PY
+
+      - name: Risk classification
+        if: github.event_name == 'pull_request'
+        run: |
+          if [ -x stacks/github/scripts/classify-risk.py ]; then
+            stacks/github/scripts/classify-risk.py "${{ github.event.pull_request.base.sha }}" || {
+              echo "::warning::this change needs a human — auto-merge must not apply"
+              gh pr edit "${{ github.event.pull_request.number }}" --add-label needs-human
+            }
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
