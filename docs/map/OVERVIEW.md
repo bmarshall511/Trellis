@@ -5,7 +5,7 @@
 
 _No `trellis.json` — the project is not set up yet._
 
-7 project files, 0 of them code.
+11 project files, 0 of them code.
 
 _79 framework files (Trellis itself) are excluded — see `.claude/framework-paths.json`._
 
@@ -14,7 +14,7 @@ _79 framework files (Trellis itself) are excluded — see `.claude/framework-pat
 | Area | Files | What it is |
 |---|---:|---|
 | `(root)` | 5 | Top-level config and docs |
-| `docs` | 2 | Specs, approved mockups, decision records, session handoffs, and the generated map. |
+| `docs` | 6 | Specs, approved mockups, decision records, session handoffs, and the generated map. |
 
 ## Changing most
 
@@ -33,6 +33,6 @@ Last 30 days. Where the work is, and where regressions are most likely.
 
 ---
 
-Generated 2026-08-12 00:08 UTC from commit `e5f2440`.
+Generated 2026-08-12 00:13 UTC from commit `b3ab307`.
 
 If this disagrees with the code, the code is right — regenerate with `.claude/scripts/build-map.py`.

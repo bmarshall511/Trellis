@@ -17,3 +17,6 @@ Be concrete. "Continuing the work" helps nobody. Assume the reader has none of y
 ask you anything.
 
 Then show the user the copy-pastable prompt from the bottom of the file.
+
+Add a section the hook cannot know about: **what is NOT proven**. A handoff that lists only what was
+finished invites the next session to trust things nobody tested.

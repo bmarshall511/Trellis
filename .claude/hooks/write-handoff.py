@@ -31,6 +31,17 @@ def git(*args, default=""):
         return default
 
 
+def project_name(config):
+    """trellis.json, then the git remote, then the directory. The directory is the worst of the three:
+    it is whatever the repo was cloned into, which is often not the project's name at all."""
+    if config.get("name"):
+        return config["name"]
+    remote = git("config", "--get", "remote.origin.url")
+    if remote:
+        return os.path.basename(remote.rstrip("/")).removesuffix(".git")
+    return os.path.basename(REPO_ROOT)
+
+
 def load_json(path):
     try:
         with open(path) as fh:
@@ -88,9 +99,10 @@ def main():
     doc = []
     doc.append("# Session handoff")
     doc.append("")
-    doc.append("Written automatically at {}, just before context was compacted."
-               .format(now.strftime("%Y-%m-%d %H:%M UTC")))
-    doc.append("Trigger: %s." % ("manual /compact" if event.get("trigger") == "manual" else "context limit"))
+    manual = event.get("trigger") == "manual"
+    doc.append("Written {} at {}.".format(
+        "on request" if manual else "automatically, just before context was compacted",
+        now.strftime("%Y-%m-%d %H:%M UTC")))
     doc.append("")
     doc.append("---")
     doc.append("")
@@ -163,10 +175,11 @@ def main():
     doc.append("## Paste this into a new session")
     doc.append("")
     doc.append("```")
-    doc.append("Continuing work on %s." % (config.get("name") if config else os.path.basename(REPO_ROOT)))
+    doc.append(f"Continuing work on {project_name(config)}.")
     doc.append("")
     doc.append("Read docs/handoff/LATEST.md first — it has the full state of where I left off.")
-    doc.append("Then read the specs listed there as in-flight.")
+    if specs:
+        doc.append("Then read the in-flight specs it lists.")
     doc.append("")
     doc.append(f"Branch: {branch}")
     if specs:
