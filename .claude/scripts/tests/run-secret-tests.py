@@ -15,7 +15,7 @@ for expected, key in ((1, "detect"), (0, "clean")):
     for case in cases[key]:
         # A case may name the file it lives in: some rules depend on the filename, such as the
         # lockfile exemption from the entropy heuristic.
-        name, line, filename = (case + [None])[:3] if len(case) < 3 else case
+        name, line, filename = ([*case, None])[:3] if len(case) < 3 else case
         if filename:
             path = os.path.join(ROOT, filename)
             existed = os.path.exists(path)

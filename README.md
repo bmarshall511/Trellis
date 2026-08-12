@@ -167,6 +167,7 @@ production guard in this repo allowed everything through, and only a test caught
 .claude/scripts/build-map.py --check         # map is current
 .claude/scripts/tests/run-loop-tests.sh      # 6 unattended-run scenarios
 stacks/github/tests/run-risk-tests.py        # 32 risk-classification cases
+.claude/lib/tests/test-frontmatter.py        # 20 frontmatter-parser cases
 ```
 
 The integrity check exists because each piece can be individually correct while the whole is broken — a

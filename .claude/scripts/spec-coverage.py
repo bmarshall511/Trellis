@@ -21,6 +21,9 @@ import os
 import re
 import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
+from frontmatter import parse_and_body
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 SPECS_DIR = os.path.join(ROOT, "docs", "specs")
@@ -33,18 +36,6 @@ SKIP_DIRS = {".git", "node_modules", "dist", "build", "out", ".next", "target", 
              "stacks", "setup", "docs"}
 
 
-def frontmatter_and_body(text):
-    if not text.startswith("---"):
-        return {}, text
-    parts = text.split("---", 2)
-    if len(parts) < 3:
-        return {}, text
-    fields = {}
-    for line in parts[1].splitlines():
-        if ":" in line and not line.startswith((" ", "\t", "#")):
-            key, _, value = line.partition(":")
-            fields[key.strip()] = value.strip().strip("'\"")
-    return fields, parts[2]
 
 
 def criteria(body):
@@ -128,7 +119,7 @@ def find_coverage(spec_id, number, files):
 
 def report(path, files, strict):
     text = open(path).read()
-    fields, body = frontmatter_and_body(text)
+    fields, body = parse_and_body(text)
     spec_id = fields.get("id", os.path.basename(path))
     crits = criteria(body)
 
@@ -178,7 +169,7 @@ def main():
     else:
         paths = []
         for path in all_specs:
-            fields, _ = frontmatter_and_body(open(path).read())
+            fields, _ = parse_and_body(open(path).read())
             if fields.get("status") in ("verifying", "done"):
                 paths.append(path)
         if not paths:

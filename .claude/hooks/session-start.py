@@ -14,6 +14,9 @@ import os
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
+from frontmatter import parse_file
+
 HOOK_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HOOK_DIR, "..", ".."))
 
@@ -38,23 +41,6 @@ def git(*args):
         return ""
 
 
-def frontmatter(path):
-    """Minimal YAML frontmatter reader — key: value only. No dependency worth adding for this."""
-    fields = {}
-    try:
-        with open(path) as fh:
-            if fh.readline().strip() != "---":
-                return fields
-            for raw in fh:
-                line = raw.rstrip("\n")
-                if line.strip() == "---":
-                    break
-                if ":" in line and not line.startswith((" ", "\t", "#")):
-                    key, _, value = line.partition(":")
-                    fields[key.strip()] = value.strip().strip("'\"")
-    except Exception:
-        pass
-    return fields
 
 
 def tripwires(config):
@@ -148,7 +134,7 @@ def main():
         for name in sorted(os.listdir(specs_dir)):
             if not name.endswith(".md") or name.startswith("_"):
                 continue
-            meta = frontmatter(os.path.join(specs_dir, name))
+            meta = parse_file(os.path.join(specs_dir, name))
             status, title = meta.get("status", ""), meta.get("title", name)
             entry = "{} — {}".format(meta.get("id", name), title)
             if status in ("blocked", "clarifying"):

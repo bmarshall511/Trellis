@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """Tests the risk classifier. Path rules run against explicit file lists; content rules use real
 git diffs, since a destructive migration is only destructive by its added lines."""
-import json, os, subprocess, sys, tempfile
+import json
+import os
+import subprocess
+import sys
+import tempfile
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 CLASSIFY = os.path.join(HERE, "..", "scripts", "classify-risk.py")
 cases = json.load(open(os.path.join(HERE, "risk-cases.json")))
@@ -55,7 +60,8 @@ diff_case("not null with default", "alter table posts add column x text not null
 total = len(cases["auto"]) + len(cases["needsHuman"]) + 8
 if fails:
     print(f"FAILING ({len(fails)}/{total}):")
-    for f in fails: print("  " + f)
+    for f in fails:
+        print("  " + f)
     sys.exit(1)
 print(f"risk: all {total} cases correct ({len(cases['auto'])} auto, "
       f"{len(cases['needsHuman'])} needs-human, 8 content-based)")

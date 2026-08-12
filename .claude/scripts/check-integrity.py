@@ -16,6 +16,9 @@ import re
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
+from frontmatter import parse
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
 CLAUDE = os.path.join(ROOT, ".claude")
@@ -49,15 +52,6 @@ def load_json(path):
         return None
 
 
-def frontmatter(text):
-    if not text.startswith("---"):
-        return {}
-    fields = {}
-    for line in text.split("---", 2)[1].splitlines():
-        if ":" in line and not line.startswith((" ", "\t", "#")):
-            key, _, value = line.partition(":")
-            fields[key.strip()] = value.strip().strip("'\"")
-    return fields
 
 
 def listdir(path):
@@ -80,7 +74,7 @@ for name in listdir(skills_dir):
     if not os.path.exists(path):
         fail(f"skills/{name} has no SKILL.md")
         continue
-    meta = frontmatter(read(path))
+    meta = parse(read(path))
     declared = meta.get("name", "")
     if declared != name:
         fail(f"skills/{name} declares name '{declared}' — must match the directory")
@@ -99,7 +93,7 @@ agents_dir = os.path.join(CLAUDE, "agents")
 for name in listdir(agents_dir):
     if not name.endswith(".md"):
         continue
-    meta = frontmatter(read(os.path.join(agents_dir, name)))
+    meta = parse(read(os.path.join(agents_dir, name)))
     stem = name[:-3]
     if meta.get("name") != stem:
         fail("agents/{} declares name '{}' — must match the filename".format(name, meta.get("name")))
@@ -115,7 +109,7 @@ if not command_files:
 
 for name in command_files:
     text = read(os.path.join(commands_dir, name))
-    if not frontmatter(text).get("description"):
+    if not parse(text).get("description"):
         fail(f"commands/{name} has no description")
 
     # A command that names a skill which does not exist is silently a no-op.

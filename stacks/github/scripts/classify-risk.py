@@ -68,8 +68,8 @@ def changed_files(base):
 def added_lines(base, path):
     """Only ADDED lines. A destructive statement being deleted is not a destructive change."""
     diff = git("diff", "-U0", f"{base}...HEAD", "--", path)
-    return "\n".join(l[1:] for l in diff.splitlines()
-                     if l.startswith("+") and not l.startswith("+++"))
+    return "\n".join(line[1:] for line in diff.splitlines()
+                     if line.startswith("+") and not line.startswith("+++"))
 
 
 def matches(path, patterns):

@@ -15,7 +15,11 @@ import json
 import os
 import subprocess
 import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
 from datetime import datetime, timezone
+
+from frontmatter import parse_file
 
 HOOK_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HOOK_DIR, "..", ".."))
@@ -50,21 +54,6 @@ def load_json(path):
         return {}
 
 
-def frontmatter(path):
-    fields = {}
-    try:
-        with open(path) as fh:
-            if fh.readline().strip() != "---":
-                return fields
-            for line in fh:
-                if line.strip() == "---":
-                    break
-                if ":" in line and not line.startswith((" ", "\t", "#")):
-                    key, _, value = line.partition(":")
-                    fields[key.strip()] = value.strip().strip("'\"")
-    except Exception:
-        pass
-    return fields
 
 
 def in_flight_specs():
@@ -75,7 +64,7 @@ def in_flight_specs():
     for name in sorted(os.listdir(specs_dir)):
         if not name.endswith(".md") or name.startswith("_"):
             continue
-        meta = frontmatter(os.path.join(specs_dir, name))
+        meta = parse_file(os.path.join(specs_dir, name))
         if meta.get("status") in ("building", "verifying", "blocked", "clarifying"):
             out.append((meta.get("id", name), meta.get("title", ""), meta.get("status", ""),
                         os.path.join("docs/specs", name)))
