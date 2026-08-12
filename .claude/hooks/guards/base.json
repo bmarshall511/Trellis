@@ -14,8 +14,9 @@
     },
     {
       "id": "sql-unqualified-delete",
-      "pattern": "\\bdelete\\s+from\\s+[\\w.\"]+\\s*(;|$)",
-      "reason": "DELETE with no WHERE clause deletes every row."
+      "pattern": "\\bdelete\\s+from\\s+[\\w.\\\"]+\\s*(?:;|$|[)\\\"'`])",
+      "reason": "DELETE with no WHERE clause deletes every row.",
+      "$comment": "Terminator accepts a closing quote or paren so the rule still fires inside a command substitution."
     },
     {
       "id": "sql-unqualified-update",
@@ -75,9 +76,9 @@
     },
     {
       "id": "recursive-root-delete",
-      "pattern": "\\brm\\b(?=[^|;&]*(?:-\\w*r|--recursive))(?=[^|;&]*(?:-\\w*f|--force))[^|;&]*\\s(?:/|~|\\$HOME|\\.)(?:\\s|/?$)",
+      "pattern": "\\brm\\b(?=[^|;&]*(?:-\\w*r|--recursive))(?=[^|;&]*(?:-\\w*f|--force))[^|;&]*\\s(?:/|~|\\$HOME|\\.)/?(?:\\s|$|[)\\\"'`])",
       "reason": "Recursive delete of a root, home or working directory.",
-      "$comment": "-rf, -fr, -r -f and --recursive --force are the same command. Match the flags independently rather than enumerating their arrangements."
+      "$comment": "-rf, -fr, -r -f and --recursive --force are the same command. Match the flags independently rather than enumerating their arrangements. The terminator must also accept a closing quote or paren: inside `$(rm -rf ~)` the path is followed by `)\"`, not whitespace."
     },
     {
       "id": "obfuscation",

@@ -30,8 +30,18 @@ ENV_PREFIX = re.compile(r"^(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|\S*)\
 # the instruction. The distinction is the verb, not the quoting: these commands cannot execute their
 # argument, so nothing inside it can be executed.
 PROSE_COMMANDS = re.compile(
-    r"^(?:git\s+(?:commit|tag|merge|revert|stash|notes)|"
+    r"^\s*(?:git\s+(?:commit|tag|merge|revert|stash|notes)|"
     r"gh\s+(?:pr|issue|release)\s+\w+)\b", re.I)
+
+# `git add -A && git commit -m "..."` is one of the most common shapes there is. Anchoring prose
+# detection to the start of the whole command missed it, so each segment is judged on its own.
+SEGMENT = re.compile(r"(\s*(?:&&|\|\||;|\|)\s*)")
+
+# A message containing a command substitution is not prose. The shell evaluates `$(...)` and backticks
+# BEFORE git ever sees the argument, so stripping the quotes would hide a command that genuinely runs.
+# The earlier comment claimed these commands "cannot execute their argument" — true of git, false of
+# the shell that invokes it.
+SUBSTITUTION = re.compile(r"\$\(|`|\$\{[^}]*[|;&]")
 
 PROSE_ARGS = re.compile(
     r"(?:-m|--message|--title|--body|--subject|--notes)(?:=|\s+)"
@@ -69,13 +79,26 @@ def normalise(command):
     Collapse line continuations and whitespace, then also test a copy with leading environment
     assignments removed -- `LEFTHOOK=0 git commit` is otherwise invisible to a command-name match.
     """
-    # Remove prose before flattening, because a heredoc body is only identifiable while newlines exist.
-    text = command
-    if PROSE_COMMANDS.match(text.lstrip()):
-        text = HEREDOC.sub(" ", text)
-        text = PROSE_ARGS.sub(" ", text)
+    def strip_prose(segment):
+        """Remove message text from a segment whose command exists to record prose."""
+        if not PROSE_COMMANDS.match(segment):
+            return segment
+        segment = HEREDOC.sub(" ", segment)
 
-    flat = re.sub(r"\s+", " ", text.replace("\\\n", " ")).strip()
+        def replace(match):
+            # Keep anything the shell would execute; only literal text is safe to discard.
+            return " " if not SUBSTITUTION.search(match.group(1)) else match.group(0)
+
+        return PROSE_ARGS.sub(replace, segment)
+
+    # Heredoc bodies may contain && or ;, so they must be handled before splitting on separators.
+    text = command.replace("\\\n", " ")
+    if HEREDOC.search(text) and PROSE_COMMANDS.match(text.lstrip()):
+        text = strip_prose(text)
+    text = "".join(part if SEGMENT.fullmatch(part) else strip_prose(part)
+                   for part in SEGMENT.split(text))
+
+    flat = re.sub(r"\s+", " ", text).strip()
     return {flat, ENV_PREFIX.sub("", flat)}
 
 

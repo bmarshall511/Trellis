@@ -187,6 +187,34 @@
   [
    "rm long-form flags",
    "rm --recursive --force ~"
+  ],
+  [
+   "substitution in a commit message",
+   "git commit -m \"$(rm -rf ~)\""
+  ],
+  [
+   "backtick substitution in a message",
+   "git commit -m \"`rm -rf ~`\""
+  ],
+  [
+   "substitution after &&",
+   "git add -A && git commit -m \"$(supabase db push)\""
+  ],
+  [
+   "substitution running psql",
+   "git add -A && git commit -m \"$(psql -h prod.db -c \\\"DROP TABLE x\\\")\""
+  ],
+  [
+   "substitution with unqualified delete",
+   "git commit -m \"$(delete from users)\""
+  ],
+  [
+   "real push after a prose commit",
+   "git add -A && git push origin main"
+  ],
+  [
+   "reset --hard after a prose commit",
+   "git commit -m \"wip\" && git reset -q --hard HEAD~3"
   ]
  ],
  "allow": [
@@ -329,6 +357,30 @@
   [
    "reflog read",
    "git reflog -6"
+  ],
+  [
+   "prose after && (the common shape)",
+   "git add -A && git commit -m \"note: git push origin main is denied\""
+  ],
+  [
+   "prose after semicolon",
+   "git add -A; git commit -m \"fix: DROP TABLE guard\""
+  ],
+  [
+   "prose at the end of a longer chain",
+   "npm test && git add -A && git commit -m \"chore: supabase db push denied\""
+  ],
+  [
+   "heredoc after &&",
+   "git add -A && git commit -F - <<'EOF'\nfix: DROP TABLE and git push origin main\nEOF"
+  ],
+  [
+   "prose mentioning rm -rf",
+   "git add -A && git commit -m \"fix: rm -rf handling\""
+  ],
+  [
+   "prose mentioning delete from",
+   "git commit -m \"docs: describe delete from users behaviour\""
   ]
  ]
 }

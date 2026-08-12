@@ -231,9 +231,26 @@ for name in listdir(stacks_dir):
     if os.path.exists(extractor) and not os.access(extractor, os.X_OK):
         note(f"stacks/{name}/extract-map.py is not executable")
 
+# ---------------------------------------------------------------- ownership manifest
+# Every framework file must be covered, or trellis-update.sh silently fails to ship it. That is not
+# hypothetical: a hand-written list omitted .claude/lib/frontmatter.py and left downstream projects
+# with an integrity check that died on import.
+_owned = [p.rstrip("/") for p in _paths.get("owned", [])] if (_paths := load_json(
+    os.path.join(CLAUDE, "framework-paths.json")) or {}) else []
+if _owned:
+    _tracked = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True,
+                              text=True, check=False).stdout.split()
+    _prefixes = (".claude/", ".githooks/", "stacks/", "setup/")
+    _singles = ("trellis.schema.json", ".gitattributes")
+    for _file in _tracked:
+        if not (_file.startswith(_prefixes) or _file in _singles):
+            continue
+        if not any(_file == o or _file.startswith(o + "/") for o in _owned):
+            fail("%s is a framework file but no entry in framework-paths.json covers it — "
+                 "trellis-update.sh would not ship it" % _file)
+
 # ---------------------------------------------------------------- generated files
 # The list and .gitattributes must agree, or a generated file gains a conflict nobody expects.
-_paths = load_json(os.path.join(CLAUDE, "framework-paths.json")) or {}
 _generated = _paths.get("generated", [])
 _attributes = read(os.path.join(ROOT, ".gitattributes"))
 for _path in _generated:

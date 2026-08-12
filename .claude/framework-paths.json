@@ -3,6 +3,7 @@
   "owned": [
     ".claude/",
     ".githooks/",
+    ".gitattributes",
     "stacks/",
     "setup/",
     "trellis.schema.json",
@@ -21,5 +22,7 @@
     "docs/handoff/LATEST.md",
     "docs/runs/DIGEST.md"
   ],
-  "$generatedNote": "Files Trellis writes rather than people. They conflict on every concurrent branch and the conflict is never meaningful, because there is a canonical resolution: regenerate. .gitattributes routes them to a merge driver that does exactly that. check-integrity asserts this list and .gitattributes agree, so adding a generated file without an entry is caught rather than discovered during a merge."
+  "$generatedNote": "Files Trellis writes rather than people. They conflict on every concurrent branch and the conflict is never meaningful, because there is a canonical resolution: regenerate. .gitattributes routes them to a merge driver that does exactly that. check-integrity asserts this list and .gitattributes agree, so adding a generated file without an entry is caught rather than discovered during a merge.",
+  "$ownedNote": "Directories rather than files, deliberately. An earlier hand-written list of individual files omitted .claude/lib/frontmatter.py, and anyone following it got an integrity check that died with ModuleNotFoundError. A directory cannot omit a file added inside it. This list is what trellis-update.sh copies, so it is load-bearing rather than documentation.",
+  "$trellisJsonNote": "trellis.json is listed because Trellis defines its FORMAT, but its CONTENTS belong to the project. trellis-update.sh never overwrites it."
 }
