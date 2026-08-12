@@ -170,6 +170,7 @@ production guard in this repo allowed everything through, and only a test caught
 stacks/github/tests/run-risk-tests.py        # 32 risk-classification cases
 .claude/lib/tests/test-frontmatter.py        # 20 frontmatter-parser cases
 .claude/scripts/tests/run-mockup-tests.sh    # 8 approval-lock cases
+.claude/scripts/tests/run-integrity-tests.sh # 11 dangling-reference cases
 ```
 
 The integrity check exists because each piece can be individually correct while the whole is broken — a

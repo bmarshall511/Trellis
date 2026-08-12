@@ -26,6 +26,33 @@ the same five lines but answer to different rules are not duplication.
 Ask: *when this changes, must every copy change together?* Yes means it is one thing. No means it is two
 things that currently look alike.
 
+## Enumerations go stale. Properties do not.
+
+The most common way a correct-looking rule quietly stops being correct is that it was written as a
+**list of the cases its author imagined**, rather than as the property that actually distinguishes them.
+
+The list is right on the day it is written. Then someone adds a case its author never pictured, and the
+rule silently stops covering it — while still reporting success, because from its own point of view
+nothing is wrong.
+
+Three real examples from this codebase, all found by other people using it:
+
+| Written as a list | The property underneath |
+|---|---|
+| Six copies of a frontmatter parser | There is one way to read frontmatter |
+| A list of two files an approval hashes | Everything a design renders against is an input |
+| A regex matching "load the `x` and `y` skills" | Names are tokens; grammar varies |
+
+The third is the clearest. The pattern had an optional group for a second name, which *consumed* it
+without capturing it — so it checked one of two references and reported that everything resolved. It
+handled exactly the sentence its author had in mind.
+
+When you catch yourself writing a list of things that count, ask what they have in common, and encode
+that instead. When you genuinely cannot — some enumerations are irreducible — say where the list came
+from, and add a check that it has not drifted from its source.
+
+The tell: you are extending a list to fix a bug. Extending it fixes today's case and leaves tomorrow's.
+
 ## Naming
 
 Naming is the highest-leverage thing in this document. Most unreadable code is well-structured code with

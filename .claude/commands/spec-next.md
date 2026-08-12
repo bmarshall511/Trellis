@@ -6,7 +6,7 @@ argument-hint: [optional spec id, otherwise the next ready one]
 Implement a spec. Target: **$ARGUMENTS** (if empty, pick the lowest-id spec that is `ready`, has all
 dependencies `done`, and has an approved mockup if `surfaces` includes `ui`).
 
-Load the `spec-authoring` and `spec-implementation` skills.
+Load the `spec-authoring`, `testing` and `clean-code` skills.
 
 ## Before starting
 

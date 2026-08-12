@@ -101,7 +101,23 @@ for name in listdir(agents_dir):
         fail(f"agents/{name} has no description")
     agents[stem] = meta
 
+# Words that appear in backticks on a skill/agent line but are VALUES, not names — spec statuses,
+# gate names, project types. Drawn from real registries rather than guessed: the statuses are asserted
+# below to match spec-lint.py, and the gates and types come from trellis.schema.json.
+SPEC_STATUSES = ("draft", "clarifying", "ready", "building", "verifying", "done", "blocked")
+
+
+def vocabulary():
+    words = set(SPEC_STATUSES)
+    schema = load_json(os.path.join(ROOT, "trellis.schema.json")) or {}
+    props = (schema.get("properties") or {})
+    words.update((props.get("type") or {}).get("enum") or [])
+    words.update(((props.get("gates") or {}).get("properties") or {}).keys())
+    return words
+
+
 # ---------------------------------------------------------------- commands
+VOCABULARY = vocabulary()
 commands_dir = os.path.join(CLAUDE, "commands")
 command_files = [n for n in listdir(commands_dir) if n.endswith(".md")]
 if not command_files:
@@ -113,18 +129,44 @@ for name in command_files:
         fail(f"commands/{name} has no description")
 
     # A command that names a skill which does not exist is silently a no-op.
-    for referenced in re.findall(r"`([a-z][a-z0-9-]+)`\s+(?:and\s+`[a-z0-9-]+`\s+)?skills?\b", text):
-        if referenced not in skills:
-            fail(f"commands/{name} loads skill '{referenced}', which does not exist")
-    for referenced in re.findall(r"[Ll]oad the `([a-z][a-z0-9-]+)`", text):
-        if referenced not in skills:
-            fail(f"commands/{name} loads skill '{referenced}', which does not exist")
-    for referenced in re.findall(r"`([a-z][a-z0-9-]+)`\s+agent\b", text):
-        if referenced not in agents:
-            fail(f"commands/{name} uses agent '{referenced}', which does not exist")
+    #
+    # Do NOT try to parse the sentence. An earlier version matched "load the `x` and `y` skills" with
+    # an optional group for the second name -- which CONSUMED it without capturing it, so the checker
+    # verified one of two and reported success. That shipped a dangling reference.
+    #
+    # Instead: on any line that mentions a skill or an agent, check EVERY backticked kebab-case token
+    # on that line. Grammar varies; the tokens do not.
+    for raw_line in text.splitlines():
+        mentions_skill = re.search(r"\bskills?\b", raw_line, re.I)
+        mentions_agent = re.search(r"\bagents?\b", raw_line, re.I)
+        if not (mentions_skill or mentions_agent):
+            continue
+        for token in re.findall(r"`([a-z][a-z0-9-]{2,})`", raw_line):
+            if token in VOCABULARY:
+                continue
+            if mentions_skill and token in skills:
+                continue
+            if mentions_agent and token in agents:
+                continue
+            if token in skills or token in agents:
+                continue
+            kind = "skill" if mentions_skill else "agent"
+            known = sorted(skills if mentions_skill else agents)
+            fail("commands/%s references %s '%s', which does not exist. Known: %s"
+                 % (name, kind, token, ", ".join(known)))
+
     for referenced in re.findall(r"`?(\.claude/scripts/[a-z-]+\.py)`?", text):
         if not os.path.exists(os.path.join(ROOT, referenced)):
-            fail(f"commands/{name} runs '{referenced}', which does not exist")
+            fail("commands/%s runs '%s', which does not exist" % (name, referenced))
+
+# The exclusion list must not drift from the lifecycle it claims to mirror.
+_lint_source = read(os.path.join(CLAUDE, "scripts", "spec-lint.py"))
+_declared = re.search(r"^STATUSES = \(([^)]*)\)", _lint_source, re.M)
+if _declared:
+    _lint_statuses = tuple(re.findall(r'"([a-z-]+)"', _declared.group(1)))
+    if _lint_statuses != SPEC_STATUSES:
+        fail("check-integrity's SPEC_STATUSES has drifted from spec-lint.py's STATUSES: %s vs %s"
+             % (list(SPEC_STATUSES), list(_lint_statuses)))
 
 # ---------------------------------------------------------------- settings & hooks
 settings = load_json(os.path.join(CLAUDE, "settings.json")) or {}
