@@ -124,10 +124,36 @@ scenario green          DONE     pull-request 3 "risky diff, held for review" ".
 scenario green          BLOCKED  pull-request 1 "run was BLOCKED"
 scenario green          TAMPERED pull-request 1 "run was TAMPERED"
 scenario green          DONE     local        1 "mergeVia is local, refuses"
+scenario labelfail      DONE     pull-request 0 "repo has no labels and cannot create them"
+
+# Where does the caller end up? Returning them to a branch the script chose was what made a retry
+# fail with "no run report" — the report lived on the branch they had just been moved off.
+branch_case() {  # branch_case <mock> <start branch> <expected end branch> <label>
+  export MOCK_GH="$1"
+  setup DONE pull-request
+  git checkout -q "$2" 2>/dev/null
+  TRELLIS_GH_BIN="$MOCK_GH_BIN" TRELLIS_CLAUDE_BIN="$MOCK_CLAUDE" \
+  TRELLIS_CHECK_TIMEOUT=6 TRELLIS_MERGE_TIMEOUT=6 \
+    ./stacks/github/scripts/deliver-run.sh SPEC-001 >/dev/null 2>&1
+  local ended; ended="$(git rev-parse --abbrev-ref HEAD)"
+  if [ "$ended" = "$3" ]; then
+    printf "  PASS  %-52s on %s\n" "$4" "$ended"
+  else
+    printf "  FAIL  %-52s on %s (wanted %s)\n" "$4" "$ended" "$3"
+    FAILS=$((FAILS + 1))
+  fi
+  teardown
+}
+
+echo
+echo "Where the caller ends up:"
+branch_case mergerefused agent/SPEC-001 agent/SPEC-001 "failure from the agent branch returns there"
+branch_case mergerefused main           main           "failure from the default branch returns there"
+branch_case green        agent/SPEC-001 main           "success lands on the default branch"
 
 echo
 if [ $FAILS -eq 0 ]; then
-  echo "deliver: all 11 cases correct"
+  echo "deliver: all 15 cases correct"
 else
   echo "$FAILS case(s) wrong"
 fi

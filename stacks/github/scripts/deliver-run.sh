@@ -50,13 +50,38 @@ REPORT="docs/runs/${SPEC_ID}.md"
 DEFAULT_BRANCH="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')"
 [ -n "$DEFAULT_BRANCH" ] || DEFAULT_BRANCH="main"
 
+# Return to wherever the caller started, not to a branch this script decided on. Checking out the
+# default branch on exit stranded people: the report lives on the agent branch, so a retry then died
+# with "no run report" — a misleading message from a script that had just moved you off the branch
+# holding it.
+STARTING_BRANCH="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+restore_branch() {
+  [ -n "$STARTING_BRANCH" ] || return 0
+  [ "$(git rev-parse --abbrev-ref HEAD 2>/dev/null)" = "$STARTING_BRANCH" ] && return 0
+  git rev-parse --verify "$STARTING_BRANCH" >/dev/null 2>&1 && git checkout -q "$STARTING_BRANCH"
+}
+
 echo "Delivering $SPEC_ID via pull request -> $DEFAULT_BRANCH"
 
 # ---------------------------------------------------------------- the run finished properly
 git rev-parse --verify "$BRANCH" >/dev/null 2>&1 || die "no branch $BRANCH"
-[ -f "$REPORT" ] || die "no run report at $REPORT"
 
-OUTCOME="$(grep -m1 '^\*\*Outcome:\*\*' "$REPORT" | sed 's/.*:\*\* //')"
+# The report may be committed on the agent branch, on the default branch, or sitting uncommitted in
+# the working tree, depending on how the work was built. Look in all three rather than demanding the
+# caller be standing in the right place.
+REPORT_BODY=""
+if [ -f "$REPORT" ]; then
+  REPORT_BODY="$(cat "$REPORT")"
+else
+  for ref in "$BRANCH" "$DEFAULT_BRANCH"; do
+    REPORT_BODY="$(git show "${ref}:${REPORT}" 2>/dev/null)" && [ -n "$REPORT_BODY" ] && break
+    REPORT_BODY=""
+  done
+fi
+[ -n "$REPORT_BODY" ] || die "no run report for $SPEC_ID. Looked in the working tree, on $BRANCH and on
+$DEFAULT_BRANCH. Write one with: .claude/scripts/write-run-report.sh $SPEC_ID DONE"
+
+OUTCOME="$(printf '%s\n' "$REPORT_BODY" | grep -m1 '^\*\*Outcome:\*\*' | sed 's/.*:\*\* //')"
 case "$OUTCOME" in
   DONE)     say "run outcome: DONE" ;;
   TAMPERED) die "run outcome was TAMPERED. Nothing it produced is trustworthy." ;;
@@ -65,10 +90,6 @@ esac
 
 [ -z "$(git status --porcelain)" ] || die "working tree is dirty"
 
-# Read the report NOW, while still on the default branch. It was committed there, so it does not
-# exist on the agent branch — reading it after the checkout silently produced an empty pull request
-# body.
-REPORT_BODY="$(cat "$REPORT")"
 SPEC_TITLE="$(grep -m1 '^title:' docs/specs/${SPEC_ID}*.md | sed 's/title: *//')"
 
 # ---------------------------------------------------------------- verify locally first
@@ -77,11 +98,11 @@ SPEC_TITLE="$(grep -m1 '^title:' docs/specs/${SPEC_ID}*.md | sed 's/title: *//')
 git checkout -q "$BRANCH" || die "could not switch to $BRANCH"
 
 echo '{}' | .claude/hooks/verify-gate.py >/dev/null 2>&1 \
-  || { git checkout -q "$DEFAULT_BRANCH"; die "gates fail on the branch"; }
+  || { restore_branch; die "gates fail on the branch"; }
 say "gates green locally"
 
 .claude/scripts/spec-coverage.py "$SPEC_ID" >/dev/null 2>&1 \
-  || { git checkout -q "$DEFAULT_BRANCH"; die "acceptance criteria are uncovered"; }
+  || { restore_branch; die "acceptance criteria are uncovered"; }
 say "every criterion covered"
 
 BASE_SHA="$(git merge-base HEAD "$DEFAULT_BRANCH")"
@@ -90,7 +111,7 @@ RISK="auto"
 say "risk: $RISK"
 
 if $DRY_RUN; then
-  git checkout -q "$DEFAULT_BRANCH"
+  restore_branch
   echo "Dry run - would push, open a pull request, and $([ "$RISK" = auto ] && echo 'merge when green' || echo 'stop for review')."
   exit 0
 fi
@@ -109,18 +130,36 @@ BODY="$REPORT_BODY
 Produced by an unattended Trellis run. The verdict above came from the gates and the coverage mapper,
 not from the agent's account of what it did."
 
+# gh pr create fails outright on a label the repository does not have, and no repository has these
+# until something makes them. That killed the first delivery in a fresh repo AFTER the branch had
+# been pushed — the worst moment to discover a missing prerequisite.
+ensure_label() {
+  "$GH" label create "$1" --color "$2" --description "$3" --force >/dev/null 2>&1 || true
+}
+ensure_label "agent-run"   "0e8a16" "Opened by an unattended Trellis run"
+ensure_label "needs-human" "d93f0b" "Risk classifier requires review before merge"
+
 LABELS="agent-run"
 [ "$RISK" = "needs-human" ] && LABELS="$LABELS,needs-human"
 
 PR_URL="$("$GH" pr create --base "$DEFAULT_BRANCH" --head "$BRANCH" \
   --title "$TITLE" --body "$BODY" --label "$LABELS" 2>&1 | tail -1)"
 case "$PR_URL" in
+  http*) ;;
+  *)
+    # Retry without labels. A missing label is a repository-configuration detail; it should not sink
+    # a delivery whose gates, coverage and risk have all passed.
+    say "pull request creation failed, retrying without labels"
+    PR_URL="$("$GH" pr create --base "$DEFAULT_BRANCH" --head "$BRANCH" \
+      --title "$TITLE" --body "$BODY" 2>&1 | tail -1)" ;;
+esac
+case "$PR_URL" in
   http*) say "opened $PR_URL" ;;
-  *) git checkout -q "$DEFAULT_BRANCH"; die "could not create the pull request: $PR_URL" ;;
+  *) restore_branch; die "could not create the pull request: $PR_URL" ;;
 esac
 
 if [ "$RISK" = "needs-human" ]; then
-  git checkout -q "$DEFAULT_BRANCH"
+  restore_branch
   .claude/scripts/notify.sh "NEEDS-HUMAN" "$SPEC_ID" "$PR_URL" >/dev/null 2>&1
   echo
   echo "NEEDS-HUMAN - $PR_URL is open and will not merge itself."
@@ -171,7 +210,7 @@ while :; do
       break ;;
     timeout)
       .claude/scripts/notify.sh "CI-TIMEOUT" "$SPEC_ID" "$PR_URL" >/dev/null 2>&1
-      git checkout -q "$DEFAULT_BRANCH"
+      restore_branch
       echo; echo "CI did not finish within ${CHECK_TIMEOUT}s - $PR_URL left open."
       exit 1 ;;
   esac
@@ -180,7 +219,7 @@ while :; do
   ATTEMPT=$((ATTEMPT + 1))
   if [ "$ATTEMPT" -gt "$MAX_REPAIRS" ]; then
     .claude/scripts/notify.sh "CI-FAILED" "$SPEC_ID" "$PR_URL" >/dev/null 2>&1
-    git checkout -q "$DEFAULT_BRANCH"
+    restore_branch
     echo
     echo "CI still failing after $MAX_REPAIRS repair attempt(s) - $PR_URL left open for you."
     exit 1
@@ -214,7 +253,7 @@ Run the local gates before committing." \
 
   if [ -f BLOCKED.md ]; then
     .claude/scripts/notify.sh "BLOCKED" "$SPEC_ID" "$PR_URL" >/dev/null 2>&1
-    git checkout -q "$DEFAULT_BRANCH"
+    restore_branch
     echo; echo "BLOCKED during CI repair - $PR_URL left open. See BLOCKED.md."
     exit 3
   fi
@@ -225,7 +264,7 @@ Run the local gates before committing." \
   fi
 
   git push -q origin "$BRANCH" 2>/dev/null || {
-    git checkout -q "$DEFAULT_BRANCH"
+    restore_branch
     die "could not push the repair"
   }
   say "pushed repair, re-polling"
@@ -235,7 +274,7 @@ done
 # ---------------------------------------------------------------- merge
 "$GH" pr merge "$PR_URL" --squash --delete-branch >/dev/null 2>&1 || {
   .claude/scripts/notify.sh "MERGE-REFUSED" "$SPEC_ID" "$PR_URL" >/dev/null 2>&1
-  git checkout -q "$DEFAULT_BRANCH"
+  restore_branch
   die "checks passed but the merge was refused - often branch protection. See $PR_URL"
 }
 
