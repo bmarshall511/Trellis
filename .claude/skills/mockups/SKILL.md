@@ -8,9 +8,13 @@ description: Use before implementing anything with a user interface, when the us
 Nothing with a user interface gets implemented before its design has been seen and approved. Design
 decided during implementation is design nobody reviewed.
 
-Approval is recorded by `.claude/scripts/mockup.py`, which hashes what the reviewer actually saw. Editing
-a mockup afterwards — or changing the tokens it was rendered against — voids the approval automatically.
-This is deliberate: an approval you can quietly invalidate is not a gate.
+Approval is recorded by `.claude/scripts/mockup.py`, which hashes what the reviewer actually saw: the
+mockup files, and **everything under `docs/mockups/_foundations/`** — tokens, brand assets, fonts,
+icons. Change any of it and the approval is void. This is deliberate: an approval you can quietly
+invalidate is not a gate.
+
+So anything a mockup renders against belongs in `_foundations/`. An asset kept elsewhere is outside
+the lock, and can be swapped underneath an approved design without anything noticing.
 
 ## Two tiers
 
@@ -99,3 +103,4 @@ loads, the screenshot succeeds, and the page is blank.
 - Showing only the success state
 - Lorem ipsum, which hides every real layout problem
 - Promoting a screen mockup into production code
+- Keeping a rendering input outside `_foundations/`, where the approval lock cannot see it

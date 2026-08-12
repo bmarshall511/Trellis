@@ -47,8 +47,9 @@ A handoff is written before compaction, with a copy-pastable prompt. A generated
 an overview instead of the whole codebase.
 
 **Designs are approved before they're built.**
-Approval is bound to a hash of the mockup *and* the design tokens it was rendered against, so editing
-either one voids it automatically. A file-existence check would have been forgeable.
+Approval is bound to a hash of the mockup *and* everything it was rendered against — tokens, brand
+assets, fonts — so changing any of it voids the approval automatically. A file-existence check would
+have been forgeable.
 
 ## What it is not
 
@@ -168,6 +169,7 @@ production guard in this repo allowed everything through, and only a test caught
 .claude/scripts/tests/run-loop-tests.sh      # 6 unattended-run scenarios
 stacks/github/tests/run-risk-tests.py        # 32 risk-classification cases
 .claude/lib/tests/test-frontmatter.py        # 20 frontmatter-parser cases
+.claude/scripts/tests/run-mockup-tests.sh    # 8 approval-lock cases
 ```
 
 The integrity check exists because each piece can be individually correct while the whole is broken — a

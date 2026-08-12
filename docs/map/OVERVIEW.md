@@ -7,7 +7,7 @@ _No `trellis.json` — the project is not set up yet._
 
 11 project files, 0 of them code.
 
-_81 framework files (Trellis itself) are excluded — see `.claude/framework-paths.json`._
+_82 framework files (Trellis itself) are excluded — see `.claude/framework-paths.json`._
 
 ## Where things live
 
@@ -20,19 +20,19 @@ _81 framework files (Trellis itself) are excluded — see `.claude/framework-pat
 
 Last 30 days. Where the work is, and where regressions are most likely.
 
-- `.claude/hooks/write-handoff.py` (3 commits)
+- `.claude/hooks/session-start.py` (4 commits)
+- `.claude/hooks/write-handoff.py` (4 commits)
+- `.claude/scripts/tests/run-secret-tests.py` (4 commits)
+- `.claude/scripts/build-map.py` (3 commits)
+- `.claude/scripts/check-integrity.py` (3 commits)
+- `.claude/scripts/spec-coverage.py` (3 commits)
 - `.claude/scripts/scan-secrets.py` (3 commits)
-- `.claude/scripts/tests/run-secret-tests.py` (3 commits)
-- `.claude/hooks/session-start.py` (3 commits)
-- `.claude/scripts/spec-coverage.py` (2 commits)
-- `.claude/hooks/guard-production.py` (2 commits)
-- `.claude/hooks/verify-gate.py` (2 commits)
-- `.claude/scripts/build-map.py` (2 commits)
-- `.claude/scripts/check-integrity.py` (2 commits)
-- `.claude/scripts/mockup.py` (2 commits)
+- `.claude/scripts/spec-lint.py` (2 commits)
+- `stacks/github/scripts/classify-risk.py` (2 commits)
+- `stacks/github/tests/run-risk-tests.py` (2 commits)
 
 ---
 
-Generated 2026-08-12 01:11 UTC from commit `59d7366`.
+Generated 2026-08-12 01:36 UTC from commit `46d3171`.
 
 If this disagrees with the code, the code is right — regenerate with `.claude/scripts/build-map.py`.

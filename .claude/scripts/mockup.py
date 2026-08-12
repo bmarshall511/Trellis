@@ -28,11 +28,13 @@ APPROVAL_FILE = "approval.json"
 # Files whose content the reviewer actually saw. A change to any of them invalidates approval.
 MOCKUP_EXTENSIONS = {".html", ".css", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".md"}
 
-# Token sources, if the project has them. Changing a colour after approval changes what was approved.
-TOKEN_CANDIDATES = [
-    "docs/mockups/_foundations/tokens.css",
-    "docs/mockups/_foundations/tokens.json",
-]
+# Everything a mockup renders against lives in _foundations/. Hash all of it.
+#
+# This was once an enumerated list of two token files, which meant a brand mark under
+# _foundations/brand/ could be swapped beneath an approved mockup and still verify. The enumeration
+# WAS the bug: any list of "things that count" goes stale the moment someone adds a directory the
+# list's author did not imagine. So the rule is now the directory, not a list of its contents.
+FOUNDATIONS_DIR = "docs/mockups/_foundations"
 
 
 def git(*args, default=""):
@@ -74,8 +76,29 @@ def mockup_files(spec_id):
 
 
 def token_files():
-    return [os.path.join(REPO_ROOT, p) for p in TOKEN_CANDIDATES
-            if os.path.exists(os.path.join(REPO_ROOT, p))]
+    """Every rendering input under _foundations/, excluding derived artifacts.
+
+    Excluded, and why:
+      approval.json  — a record must never hash itself
+      <page>.png next to <page>.html — that is a screenshot OF the foundations page, an output of
+                       rendering rather than an input to it. Including it would mean re-running the
+                       screenshot script silently revoked every approval in the project.
+    """
+    root = os.path.join(REPO_ROOT, FOUNDATIONS_DIR)
+    if not os.path.isdir(root):
+        return []
+    found = []
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if not d.startswith(".")]
+        pages = {os.path.splitext(f)[0] for f in filenames if f.endswith(".html")}
+        for name in filenames:
+            if name == APPROVAL_FILE or name.startswith("."):
+                continue
+            stem, extension = os.path.splitext(name)
+            if extension.lower() in (".png", ".jpg", ".jpeg", ".webp") and stem in pages:
+                continue
+            found.append(os.path.join(dirpath, name))
+    return sorted(found)
 
 
 def signature(spec_id):
