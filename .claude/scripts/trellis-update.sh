@@ -54,8 +54,13 @@ git clone -q --depth 1 --branch "$REF" "$UPSTREAM" "$TEMP/upstream" 2>/dev/null 
 MANIFEST="$TEMP/upstream/.claude/framework-paths.json"
 [[ -f "$MANIFEST" ]] || die "upstream has no framework-paths.json"
 
-mapfile -t OWNED < <(python3 -c "
-import json, sys
+# `mapfile` is bash 4+. macOS ships bash 3.2 and always will — it went GPLv3 in 2007 — so every
+# script here must run on it. A read loop is the portable equivalent.
+OWNED=()
+while IFS= read -r line; do
+  [[ -n "$line" ]] && OWNED+=("$line")
+done < <(python3 -c "
+import json
 print('\n'.join(json.load(open('$MANIFEST')).get('owned', [])))
 ")
 [[ ${#OWNED[@]} -gt 0 ]] || die "upstream manifest lists no owned paths"
@@ -65,6 +70,7 @@ print('\n'.join(json.load(open('$MANIFEST')).get('owned', [])))
 KEEP=("trellis.json")
 
 changed=(); added=(); removed=(); modified_locally=()
+set +u  # empty arrays under bash 3.2
 
 for path in "${OWNED[@]}"; do
   skip=false
@@ -105,9 +111,10 @@ report() {
   printf '  %s\n' "$@"
 }
 
-report "Updated:" "${changed[@]:-}"
-report "Added:" "${added[@]:-}"
-report "Present here but gone upstream (left in place — remove by hand if you agree):" "${removed[@]:-}"
+# bash 3.2 treats an empty array expansion as unbound under `set -u`, so guard each one.
+[[ ${#changed[@]} -gt 0 ]] && report "Updated:" "${changed[@]}"
+[[ ${#added[@]} -gt 0 ]] && report "Added:" "${added[@]}"
+[[ ${#removed[@]} -gt 0 ]] && report "Present here but gone upstream (left in place):" "${removed[@]}"
 
 if [[ ${#modified_locally[@]} -gt 0 ]]; then
   report "⚠ You had uncommitted edits to these framework files:" "${modified_locally[@]}"

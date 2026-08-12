@@ -21,7 +21,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-mapfile -t QUEUE < <(python3 - <<'PY'
+# mapfile is bash 4+; macOS ships bash 3.2 and always will (it went GPLv3 in 2007).
+QUEUE=()
+while IFS= read -r _line; do
+  [ -n "$_line" ] && QUEUE+=("$_line")
+done < <(python3 - <<'PY'
 import os, re
 d = "docs/specs"
 specs = {}

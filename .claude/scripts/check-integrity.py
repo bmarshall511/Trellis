@@ -181,6 +181,34 @@ for event, groups in (settings.get("hooks") or {}).items():
             elif not os.access(path, os.X_OK):
                 fail(f"{rel} is not executable — the {event} hook will fail silently")
 
+# ---------------------------------------------------------------- shell portability
+# macOS ships bash 3.2 and always will — bash went GPLv3 in 2007 and Apple has not shipped a newer
+# one since. Every script here must run on it. `mapfile` broke trellis-update.sh on the very machine
+# Trellis was written on.
+BASH4_ONLY = {
+    "mapfile": "bash 4+; use a `while IFS= read -r` loop",
+    "readarray": "bash 4+; use a `while IFS= read -r` loop",
+    "declare -A": "bash 4+ associative arrays; use parallel arrays or python",
+    "${!": "bash 4+ indirect expansion in some forms; verify on bash 3.2",
+}
+for _dirpath, _dirnames, _filenames in os.walk(ROOT):
+    if any(part in _dirpath for part in (".git", "node_modules")):
+        continue
+    for _name in _filenames:
+        _full = os.path.join(_dirpath, _name)
+        _rel = os.path.relpath(_full, ROOT)
+        if not (_name.endswith(".sh") or _rel.startswith(".githooks/")):
+            continue
+        _text = read(_full)
+        if not _text.startswith("#!"):
+            continue
+        # Comments explaining why a feature is avoided must not be mistaken for using it.
+        _code = "\n".join(line for line in _text.splitlines()
+                           if not line.lstrip().startswith("#"))
+        for _feature, _why in BASH4_ONLY.items():
+            if _feature in _code:
+                fail("%s uses `%s` — %s" % (_rel, _feature, _why))
+
 # ---------------------------------------------------------------- guards have tests
 cases_path = os.path.join(CLAUDE, "hooks/tests/guard-cases.json")
 cases = load_json(cases_path) or {"block": [], "allow": []}
