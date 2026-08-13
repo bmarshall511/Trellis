@@ -97,22 +97,22 @@ SPEC_TITLE="$(grep -m1 '^title:' docs/specs/${SPEC_ID}*.md | sed 's/title: *//')
 # something already knowable in seconds.
 git checkout -q "$BRANCH" || die "could not switch to $BRANCH"
 
-# The Stop hook runs the gates too, and gates bind ports and name containers. Two at once produces
-# connection errors that read as product bugs rather than as contention.
-python3 - "$ROOT" <<'LOCKPY' || { restore_branch; die "another process is running the gates"; }
-import sys, os
-sys.path.insert(0, os.path.join(sys.argv[1], ".claude", "lib"))
-from gatelock import GateBusy, gate_lock
-try:
-    gate_lock(sys.argv[1], owner="deliver-run", timeout=1200).__enter__()
-except GateBusy as busy:
-    print(busy, file=sys.stderr); sys.exit(1)
-LOCKPY
-release_gate_lock() { rm -f "$ROOT/.claude/.gates.lock" 2>/dev/null; }
-
-echo '{}' | .claude/hooks/verify-gate.py >/dev/null 2>&1 \
-  || { release_gate_lock; restore_branch; die "gates fail on the branch"; }
-release_gate_lock
+# Gates bind ports and name containers, and the Stop hook runs them too, so they are serialised —
+# by verify-gate.py, which is the process that actually runs them. Taking a second lock here, at a
+# layer that only *invokes* the thing that runs them, is what made the first version useless: the
+# acquiring process exited immediately, so the lock was stale from birth and protected nothing.
+#
+# Exit 2 means the gates could not be run at all — contention, or the loop guard. That is not the
+# same as red gates, and saying "gates fail on the branch" for it sends the reader to the code.
+echo '{}' | .claude/hooks/verify-gate.py >/dev/null 2>&1
+GATE_STATUS=$?
+if [ "$GATE_STATUS" = "2" ]; then
+  restore_branch
+  die "could not run the gates (another gate run is in flight, or the repair loop is stuck) — nothing was verified"
+elif [ "$GATE_STATUS" != "0" ]; then
+  restore_branch
+  die "gates fail on the branch"
+fi
 say "gates green locally"
 
 .claude/scripts/spec-coverage.py "$SPEC_ID" >/dev/null 2>&1 \

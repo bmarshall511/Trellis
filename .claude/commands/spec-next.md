@@ -63,6 +63,16 @@ Then, if `autonomy.mayMerge` is set in `trellis.json`:
 | `pull-request` | `stacks/github/scripts/deliver-run.sh <spec-id>` |
 | `local` | `.claude/scripts/merge-run.sh <spec-id>` |
 
+Run `deliver-run.sh` in the background, writing to a log, and poll it — it waits for CI, which takes
+longer than a foreground command is allowed to run, and being killed mid-flight leaves the branch
+pushed and the pull request open:
+
+```bash
+mkdir -p docs/runs && stacks/github/scripts/deliver-run.sh <spec-id> > docs/runs/<spec-id>-deliver.log 2>&1 &
+```
+
+Do not end the turn until that log reports a result.
+
 **Run the script. Do not open a pull request or merge by hand.** Those scripts re-run the gates on the
 branch, re-check coverage, ask the risk classifier, and — for pull requests — wait for CI and fix what
 it finds. Doing any of it manually skips every one of those checks, and produces a pull request nobody

@@ -17,6 +17,11 @@ setup() {  # setup <outcome> <mergeVia> [extra-file]
   REMOTE="$SANDBOX/remote.git"
   mkdir -p "$DIR"
   cp -R "$ROOT/.claude" "$DIR/"
+  # The real .gitignore, not an empty tree. Without it the sandbox does not ignore runtime state, so
+  # a held gate lock makes the tree dirty and delivery refuses for the wrong reason — which is
+  # exactly the bug that shipped, and a sandbox that cannot reproduce it cannot prove it fixed.
+  cp "$ROOT/.gitignore" "$DIR/.gitignore"
+  rm -f "$DIR/.claude/.gates.lock" "$DIR/.claude/.verify-state.json"
   mkdir -p "$DIR/stacks"
   cp -R "$ROOT/stacks/github" "$DIR/stacks/"
   cd "$DIR" || exit 1
@@ -146,6 +151,50 @@ branch_case() {  # branch_case <mock> <start branch> <expected end branch> <labe
   teardown
 }
 
+# Gate contention, end to end.
+#
+# Delivery used to take a lock of its own here, from a throwaway `python3 -` that wrote its pid and
+# exited, so it was stale the instant it was written and anything else reclaimed it in two seconds.
+# It was not the cause of collisions — the only thing that runs the gates is verify-gate.py, which
+# locks correctly — but it read as protection while providing none, and the `rm -f` release was the
+# tell. It is gone; this proves the remaining path still refuses.
+#
+# Against a live holder the old code did block, just for the full 1200s and then reporting the
+# result as red gates. So what this case pins down is the message and the speed, not the refusal.
+export MOCK_GH=green
+setup DONE pull-request
+python3 -c "
+import sys, time
+sys.path.insert(0, '$DIR/.claude/lib')
+from gatelock import gate_lock
+with gate_lock('$DIR', owner='someone-else', timeout=0):
+    print('held', flush=True); time.sleep(25)
+" >/dev/null 2>&1 &
+HOLDER=$!
+for _ in 1 2 3 4 5 6 7 8 9 10; do [ -f "$DIR/.claude/.gates.lock" ] && break; sleep 0.3; done
+TRELLIS_GATE_TIMEOUT=2 \
+TRELLIS_GH_BIN="$MOCK_GH_BIN" TRELLIS_CLAUDE_BIN="$MOCK_CLAUDE" \
+TRELLIS_CHECK_TIMEOUT=6 TRELLIS_MERGE_TIMEOUT=6 \
+  ./stacks/github/scripts/deliver-run.sh SPEC-001 >"$SANDBOX/out.txt" 2>&1
+GOT=$?
+kill $HOLDER 2>/dev/null; wait $HOLDER 2>/dev/null
+if [ "$GOT" = "1" ]; then
+  printf "  PASS  %-52s exit 1\n" "another gate run in flight, delivery refuses"
+else
+  printf "  FAIL  %-52s exit %s (wanted 1)\n" "another gate run in flight, delivery refuses" "$GOT"
+  FAILS=$((FAILS + 1))
+fi
+# Contention is not red gates. Reporting it as red sends the reader to the code to look for a bug
+# that is not there.
+if grep -q "could not run the gates" "$SANDBOX/out.txt" 2>/dev/null; then
+  printf "  PASS  %-52s not reported as red gates\n" "and says it is contention"
+else
+  printf "  FAIL  %-52s\n" "contention reported as a gate failure"
+  sed 's/^/          /' "$SANDBOX/out.txt" | tail -4
+  FAILS=$((FAILS + 1))
+fi
+teardown
+
 # An expired session cannot be repaired by retrying, so it must stop at once rather than spend the
 # budget attempting nothing and then blaming the code.
 export MOCK_GH=authfail
@@ -170,7 +219,7 @@ branch_case green        agent/SPEC-001 main           "success lands on the def
 
 echo
 if [ $FAILS -eq 0 ]; then
-  echo "deliver: all 18 cases correct"
+  echo "deliver: all 20 cases correct"
 else
   echo "$FAILS case(s) wrong"
 fi

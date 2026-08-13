@@ -241,9 +241,9 @@ production guard in this repo allowed everything through, and only a test caught
 .claude/scripts/tests/run-mockup-tests.sh    #  8 approval-lock cases
 .claude/scripts/tests/run-integrity-tests.sh # 11 dangling-reference cases
 .claude/lib/tests/test-frontmatter.py        # 20 frontmatter-parser cases
-.claude/lib/tests/test-gatelock.py           #  5 gate-lock cases
+.claude/lib/tests/test-gatelock.py           # 11 gate-lock cases
 stacks/github/tests/run-risk-tests.py        # 32 risk-classification cases
-stacks/github/tests/run-deliver-tests.sh     # 18 pull-request delivery cases
+stacks/github/tests/run-deliver-tests.sh     # 20 pull-request delivery cases
 
 .claude/scripts/check-integrity.py           # cross-references resolve
 .claude/scripts/spec-lint.py                 # specs meet the readiness checklist

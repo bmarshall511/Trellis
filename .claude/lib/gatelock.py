@@ -13,6 +13,17 @@ hook can fire while delivery is mid-flight.
 
 Cooperative, not enforced — a lock file plus liveness, which is enough for processes that want to
 cooperate and is not trying to defend against ones that don't.
+
+The lock belongs to whichever process actually *runs* the gates, and is held for exactly as long as
+they run. A caller that merely invokes something that runs the gates must not take a second lock at
+its own layer: the first version of this did, from a throwaway `python3 -c` that wrote its pid and
+exited, so the lock was stale from birth and any other runner reclaimed it in two seconds. Hook
+against hook was serialised; delivery against hook, the pairing it was written for, was not.
+
+The obvious repair — hold it in a process that outlives the gates — walks into the opposite failure,
+because the thing delivery invokes is the Stop hook, which locks correctly on its own. The parent
+would be waited on by its own child for the full timeout and then told the gates were red. So a
+nested acquire is a no-op rather than a deadlock, tracked through the environment: see HELD_ENV.
 """
 import errno
 import os
@@ -22,6 +33,11 @@ __all__ = ["gate_lock", "GateBusy"]
 
 LOCK_NAME = ".claude/.gates.lock"
 STALE_AFTER = 3600  # an hour: longer than any honest gate run, shorter than a forgotten lock
+
+# Set to the holder's pid on acquire, so child processes can tell "someone else is running the gates"
+# from "the gates I am part of are already locked". Children inherit the environment; unrelated
+# processes do not, which is exactly the distinction needed.
+HELD_ENV = "TRELLIS_GATE_LOCK"
 
 
 class GateBusy(Exception):
@@ -61,11 +77,35 @@ def _stale(path):
     return stamp is not None and (time.time() - stamp) > STALE_AFTER
 
 
+def _held_by_us(path):
+    """True if the lock is already held by this process or one that spawned it.
+
+    Without this, a caller that locks and then invokes something that locks too — which is what the
+    Stop hook is — waits on itself for the whole timeout and reports the gates as red.
+    """
+    inherited = os.environ.get(HELD_ENV)
+    if not inherited:
+        return False
+    try:
+        holder = int(inherited)
+    except ValueError:
+        return False
+    pid, _, _ = _read(path)
+    return pid is not None and pid == holder and _alive(holder)
+
+
 class gate_lock:  # noqa: N801 — used as a context manager, reads as one
     """Serialises gate runs.
 
         with gate_lock(root, owner="verify-gate", timeout=900):
             run_the_gates()
+
+    Use it as a context manager, in the process that runs the gates. Calling `__enter__()` from a
+    process that then exits leaves a lock that is stale the instant it is written, which reads as a
+    lock and protects nothing.
+
+    Reentrant: acquiring inside a process that already holds it succeeds immediately and releases
+    nothing, so the outermost holder stays in charge.
 
     timeout=0 raises GateBusy immediately rather than waiting, for callers that would rather report
     contention than queue behind it.
@@ -77,6 +117,7 @@ class gate_lock:  # noqa: N801 — used as a context manager, reads as one
         self.timeout = timeout
         self.poll = poll
         self.held = False
+        self.reentrant = False
 
     def _acquire_once(self):
         try:
@@ -93,10 +134,14 @@ class gate_lock:  # noqa: N801 — used as a context manager, reads as one
             return False
         with os.fdopen(fd, "w") as handle:
             handle.write("%d\n%f\n%s\n" % (os.getpid(), time.time(), self.owner))
+        os.environ[HELD_ENV] = str(os.getpid())  # inherited by anything we go on to run
         return True
 
     def __enter__(self):
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
+        if _held_by_us(self.path):
+            self.reentrant = True
+            return self
         deadline = time.time() + self.timeout
         while True:
             if self._acquire_once():
@@ -116,5 +161,6 @@ class gate_lock:  # noqa: N801 — used as a context manager, reads as one
                 os.unlink(self.path)
             except OSError:
                 pass
+            os.environ.pop(HELD_ENV, None)
             self.held = False
-        return False
+        return False  # a reentrant acquire releases nothing: the outermost holder still owns it

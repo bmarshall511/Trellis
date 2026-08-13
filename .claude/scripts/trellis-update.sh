@@ -72,6 +72,38 @@ KEEP=("trellis.json")
 changed=(); added=(); removed=(); modified_locally=()
 set +u  # empty arrays under bash 3.2
 
+# The manifest owns directories as well as files, and `diff -rq` on a directory reports the
+# directory — so this used to announce a dozen changes and then name two folders, which tells you
+# nothing about what is about to be replaced. Enumerate the actual files.
+#
+# `find` also sees build artefacts where git does not — __pycache__, tool caches — sitting inside
+# framework directories. Asking git rather than listing their names keeps that from going stale the
+# next time some tool invents a cache folder.
+ignored() { git check-ignore -q "$1" 2>/dev/null; }
+
+file_diffs() {  # file_diffs <src> <dst> — prints one line per differing file
+  local src="$1" dst="$2" rel
+  if [[ -f "$src" ]]; then
+    cmp -s "$src" "$dst" 2>/dev/null || echo "$dst"
+    return
+  fi
+  while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    ignored "$dst/$rel" && continue
+    if [[ ! -e "$dst/$rel" ]]; then
+      echo "$dst/$rel (new)"
+    elif ! cmp -s "$src/$rel" "$dst/$rel" 2>/dev/null; then
+      echo "$dst/$rel"
+    fi
+  done < <(cd "$src" 2>/dev/null && find . -type f | sed 's|^\./||' | sort)
+  # Gone upstream but still here. Left in place, so worth naming separately from what is replaced.
+  while IFS= read -r rel; do
+    [[ -z "$rel" ]] && continue
+    ignored "$dst/$rel" && continue
+    [[ -e "$src/$rel" ]] || echo "$dst/$rel (gone upstream, left in place)"
+  done < <(cd "$dst" 2>/dev/null && find . -type f | sed 's|^\./||' | sort)
+}
+
 for path in "${OWNED[@]}"; do
   skip=false
   for keep in "${KEEP[@]}"; do [[ "$path" == "$keep" ]] && skip=true; done
@@ -86,19 +118,28 @@ for path in "${OWNED[@]}"; do
   fi
 
   if [[ ! -e "$dst" ]]; then
-    added+=("$dst")
+    if [[ -d "$src" ]]; then
+      while IFS= read -r f; do
+        [[ -n "$f" ]] && added+=("$dst/$f")
+      done < <(cd "$src" && find . -type f | sed 's|^\./||' | sort)
+    else
+      added+=("$dst")
+    fi
     $CHECK_ONLY || { mkdir -p "$(dirname "$dst")"; cp -R "$src" "$dst"; }
     continue
   fi
 
   if ! diff -rq "$src" "$dst" >/dev/null 2>&1; then
-    changed+=("$dst")
-    # Something you edited is about to be replaced. Worth saying so by name.
-    if git log --oneline -1 -- "$dst" 2>/dev/null | grep -qv '^$'; then
-      if ! git diff --quiet HEAD -- "$dst" 2>/dev/null; then
-        modified_locally+=("$dst")
+    while IFS= read -r f; do
+      [[ -z "$f" ]] && continue
+      changed+=("$f")
+      # Something you edited is about to be replaced. Worth saying so by name — and per file, since
+      # a whole directory reported as "modified" does not tell you which of your edits is at risk.
+      bare="${f%% (*}"
+      if ! git diff --quiet HEAD -- "$bare" 2>/dev/null; then
+        modified_locally+=("$bare")
       fi
-    fi
+    done < <(file_diffs "$src" "$dst")
     $CHECK_ONLY || { rm -rf "$dst"; mkdir -p "$(dirname "$dst")"; cp -R "$src" "$dst"; }
   fi
 done
@@ -116,12 +157,47 @@ report() {
 [[ ${#added[@]} -gt 0 ]] && report "Added:" "${added[@]}"
 [[ ${#removed[@]} -gt 0 ]] && report "Present here but gone upstream (left in place):" "${removed[@]}"
 
-if [[ ${#modified_locally[@]} -gt 0 ]]; then
-  report "⚠ You had uncommitted edits to these framework files:" "${modified_locally[@]}"
-  echo "  They were overwritten. Recover with: git diff HEAD"
+# Trellis owns lines in .gitignore, not the file — a project's own entries live there too, so it
+# cannot be copied wholesale like everything else. Read from the upstream manifest rather than
+# written down here, for the same reason the owned list is.
+missing_ignores=()
+while IFS= read -r entry; do
+  [[ -z "$entry" ]] && continue
+  grep -qxF "$entry" "$ROOT/.gitignore" 2>/dev/null || missing_ignores+=("$entry")
+done < <(python3 -c "
+import json
+print('\n'.join(json.load(open('$MANIFEST')).get('requiredIgnores', [])))
+")
+
+if [[ ${#missing_ignores[@]} -gt 0 ]]; then
+  if $CHECK_ONLY; then
+    report "Missing from .gitignore (would be added):" "${missing_ignores[@]}"
+  else
+    {
+      echo
+      echo "# Trellis runtime state — the lock and verify state it writes into .claude/."
+      echo "# Left untracked these make the tree dirty, and delivery refuses to run on a dirty tree."
+      printf '%s\n' "${missing_ignores[@]}"
+    } >> "$ROOT/.gitignore"
+    report "Added to .gitignore:" "${missing_ignores[@]}"
+  fi
 fi
 
-if [[ ${#changed[@]} -eq 0 && ${#added[@]} -eq 0 ]]; then
+if [[ ${#modified_locally[@]} -gt 0 ]]; then
+  # Tense matters here: under --check nothing has happened yet, and saying otherwise sends someone
+  # to git looking for work that was never lost.
+  if $CHECK_ONLY; then
+    report "⚠ You have uncommitted edits to these framework files:" "${modified_locally[@]}"
+    echo "  Updating would overwrite them. Commit or stash first."
+  else
+    report "⚠ You had uncommitted edits to these framework files:" "${modified_locally[@]}"
+    echo "  They were overwritten. Recover with: git diff HEAD"
+  fi
+fi
+
+# The ignore lines count as work. Without them here, a project whose only shortfall was a missing
+# ignore entry was told it was up to date, in the same breath as being told what was added.
+if [[ ${#changed[@]} -eq 0 && ${#added[@]} -eq 0 && ${#missing_ignores[@]} -eq 0 ]]; then
   echo
   echo "Already up to date."
   exit 0

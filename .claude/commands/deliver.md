@@ -17,6 +17,19 @@ There is one sanctioned path, and it is a script:
 | `pull-request` | `stacks/github/scripts/deliver-run.sh <spec-id>` |
 | `local` | `.claude/scripts/merge-run.sh <spec-id>` |
 
+**Run it in the background and poll the log.** Delivery waits for CI — up to 30 minutes by default —
+which is longer than a foreground command is allowed to take. A foreground call is killed mid-flight,
+usually with the branch pushed and the pull request open, and the run then looks like a failure that
+it isn't:
+
+```bash
+mkdir -p docs/runs && stacks/github/scripts/deliver-run.sh <spec-id> > docs/runs/<spec-id>-deliver.log 2>&1 &
+```
+
+Then poll that log until it reports a result. Do not end the turn while it is still running: the
+gates are serialised, so ending the turn starts a gate run that will either wait for delivery's or
+be told one is already in flight — and either way the turn is not verified. Wait for the log.
+
 **Never `gh pr create` or `gh pr merge` yourself.** Not because merging is forbidden — it isn't, the
 scripts do it — but because doing it manually skips every check that makes the merge defensible: the
 gates re-run on the branch, the coverage re-check, the risk classifier, and for pull requests the CI

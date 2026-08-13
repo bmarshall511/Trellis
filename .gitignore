@@ -1,5 +1,9 @@
-# Runtime state, not source
-.claude/.verify-state.json
+# Runtime state, not source. The pattern rather than a list of names: this said
+# `.claude/.verify-state.json` and nothing else, so when the gate lock arrived it was untracked —
+# and delivery, which refuses to run on a dirty tree, refused whenever a gate run was in flight.
+# Trellis ships nothing whose name starts with a dot directly inside .claude/, so the leading dot
+# is the property that means "runtime".
+.claude/.*
 
 # OS
 .DS_Store

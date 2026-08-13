@@ -100,13 +100,20 @@ def main():  # noqa: PLR0911 — each early return is a distinct "do not block" 
 
     # Serialised: gates bind ports and name containers, and the delivery script runs them too. Two at
     # once produces connection errors that read as product bugs rather than as contention.
+    #
+    # The wait is deliberately short for a hook. Waiting out a full delivery — half an hour, most of
+    # it spent on CI — is indistinguishable from a hang, and pointless: whatever holds the lock is
+    # already running the gates this hook wants to run. Long enough to sit out a gate run that is
+    # nearly done, then say so plainly.
     try:
-        lock = gate_lock(REPO_ROOT, owner="verify-gate", timeout=1200)
+        lock = gate_lock(REPO_ROOT, owner="verify-gate",
+                         timeout=int(os.environ.get("TRELLIS_GATE_TIMEOUT", "240")))
         lock.__enter__()
     except GateBusy as busy:
         sys.stderr.write(
             "Trellis: could not run the gates — %s\n\nThis turn is NOT verified. Do not report the "
-            "work as complete.\n" % busy)
+            "work as complete. If a delivery is running, wait for it to finish and check its log "
+            "rather than re-running the gates.\n" % busy)
         return 2
 
     try:

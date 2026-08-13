@@ -10,6 +10,11 @@
     "trellis.json"
   ],
   "$note": "trellis.json is listed because it is Trellis's own declaration format, even though its contents are yours. Your project's source, tests, docs/specs and docs/mockups are never framework-owned.",
+  "requiredIgnores": [
+    ".claude/.*"
+  ],
+  "$requiredIgnoresNote": "Lines Trellis owns inside .gitignore, which it does NOT own as a file — projects add their own entries, so it cannot be replaced wholesale. trellis-update.sh appends any that are missing. This is not cosmetic: Trellis writes runtime state into .claude/ (the gate lock, verify state), and both run-spec.sh and deliver-run.sh refuse to work on a dirty tree — so an unignored lock file made delivery refuse whenever a gate run was in flight. The pattern rather than a list of names, because the previous entry named .verify-state.json alone and the gate lock arrived later.",
+
   "excludeFromLint": [
     ".claude",
     ".githooks",
