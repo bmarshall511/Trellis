@@ -18,6 +18,9 @@ import os
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
+from gatelock import GateBusy, gate_lock  # noqa: E402
+
 HOOK_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HOOK_DIR, "..", ".."))
 STATE_FILE = os.path.join(REPO_ROOT, ".claude", ".verify-state.json")
@@ -95,6 +98,24 @@ def main():  # noqa: PLR0911 — each early return is a distinct "do not block" 
         (config.get("autonomy") or {}).get("maxRepairAttempts", DEFAULT_MAX_CONSECUTIVE - 1) + 1
     )
 
+    # Serialised: gates bind ports and name containers, and the delivery script runs them too. Two at
+    # once produces connection errors that read as product bugs rather than as contention.
+    try:
+        lock = gate_lock(REPO_ROOT, owner="verify-gate", timeout=1200)
+        lock.__enter__()
+    except GateBusy as busy:
+        sys.stderr.write(
+            "Trellis: could not run the gates — %s\n\nThis turn is NOT verified. Do not report the "
+            "work as complete.\n" % busy)
+        return 2
+
+    try:
+        return run_declared(declared, state, max_consecutive)
+    finally:
+        lock.__exit__()
+
+
+def run_declared(declared, state, max_consecutive):
     for name, command in declared:
         ok, output = run_gate(name, command)
         if ok:

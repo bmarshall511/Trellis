@@ -7,7 +7,7 @@
     "",
     "Do not use --permission-mode bypassPermissions or --dangerously-skip-permissions. Those permit",
     "writes to protected paths, so the agent could delete the very guardrails meant to contain it.",
-    "Use dontAsk: it denies anything not explicitly allowed, never waits for input, and — critically —",
+    "Use dontAsk: it denies anything not explicitly allowed, never waits for input, and \u2014 critically \u2014",
     "denies the ask-a-question tool, so the only way out is finishing or writing BLOCKED.md."
   ],
   "permissions": {
@@ -78,13 +78,18 @@
       "Write(./.claude/hooks/**)",
       "Write(./.claude/scripts/**)",
       "Write(./.githooks/**)",
-      "Write(./.github/workflows/**)"
+      "Write(./.github/workflows/**)",
+      "Write(./.claude/profiles/**)",
+      "Write(./.claude/settings.json)",
+      "Write(./trellis.json)"
     ],
     "$denyNotes": {
       "unrecoverable": "Force pushes, hard resets and history rewrites destroy work that no green test suite can bring back. Everything else a run does is a commit, and commits revert.",
-      "escaping-review": "Secrets, rulesets and workflow files are how a run could make itself unreviewable — by changing what CI checks, or by switching it off. Those stay closed. Reading workflow runs and logs stays open, because that is what fixing a failing check requires.",
-      "dependencies": "A new dependency is the highest-consequence thing a run can add, and the thing a prompt-injected agent would most want to add. A spec needing an unforeseen library ends BLOCKED — one morning decision.",
-      "self-modification": "Guardrails and gate definitions are off limits. A run that can edit its own gates has no gates."
+      "escaping-review": "Secrets, rulesets and workflow files are how a run could make itself unreviewable \u2014 by changing what CI checks, or by switching it off. Those stay closed. Reading workflow runs and logs stays open, because that is what fixing a failing check requires.",
+      "dependencies": "A new dependency is the highest-consequence thing a run can add, and the thing a prompt-injected agent would most want to add. A spec needing an unforeseen library ends BLOCKED \u2014 one morning decision.",
+      "self-modification": "Guardrails and gate definitions are off limits. A run that can edit its own gates has no gates.",
+      "edit-and-write": "Every protected path carries BOTH an Edit and a Write rule. Edit governs changing a file that exists; Write governs creating one. Guarding only Edit would leave a run free to drop a NEW hook into .claude/hooks/, which is as good as editing one.",
+      "not-the-real-control": "Treat these as a first line, not the line. Permission-rule semantics are the harness's, not ours, and a rule that silently does nothing looks exactly like a rule that works. The control that actually holds is the fingerprint run-spec.sh takes of every guarded path before the run and checks afterwards: if any of it moved, the run is TAMPERED and every other result from it is discarded, regardless of which permission rules fired."
     }
   }
 }

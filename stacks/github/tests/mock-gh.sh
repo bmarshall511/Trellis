@@ -8,6 +8,8 @@
 #   mergerefused  checks pass but the merge is refused
 #   notmerged     merge command succeeds but the PR never shows as merged
 #   labelfail     repository has no labels and cannot create them
+#   resume        a pull request is already open for the branch
+#   authfail      CI fails and the repair agent cannot authenticate
 set -uo pipefail
 BEHAVIOUR="${MOCK_GH:-green}"
 COUNTER="${MOCK_GH_STATE:-/tmp/trellis-mock-gh-count}"
@@ -31,7 +33,8 @@ case "$1 ${2:-}" in
 
   "pr checks")
     case "$BEHAVIOUR" in
-      green|mergerefused|notmerged|labelfail) echo '[{"state":"SUCCESS","name":"verify"}]' ;;
+      green|mergerefused|notmerged|labelfail|resume) echo '[{"state":"SUCCESS","name":"verify"}]' ;;
+      authfail) echo '[{"state":"FAILURE","name":"verify"}]' ;;
       red)      echo '[{"state":"FAILURE","name":"verify"}]' ;;
       pending)  echo '[{"state":"IN_PROGRESS","name":"verify"}]' ;;
       nochecks) echo '[]' ;;
@@ -43,11 +46,15 @@ case "$1 ${2:-}" in
     esac
     exit 0 ;;
 
+  "pr edit") exit 0 ;;
+
   "run view") echo "FAIL tests/add.test.js: expected 2, got 3"; exit 0 ;;
 
   "pr merge")
     [ "$BEHAVIOUR" = "mergerefused" ] && exit 1
-    [ "$BEHAVIOUR" = "labelfail" ] && { git push -q origin "agent/SPEC-001:main" 2>/dev/null; exit 0; }
+    case "$BEHAVIOUR" in
+      labelfail|resume) git push -q origin "agent/SPEC-001:main" 2>/dev/null; exit 0 ;;
+    esac
     # Actually land the merge in the test remote, so the script's fast-forward step is genuinely
     # exercised rather than skipped over. A mock that returns success without changing anything
     # would let a broken sync pass.
@@ -55,6 +62,13 @@ case "$1 ${2:-}" in
     exit 0 ;;
 
   "pr view")
+    # `pr view <branch> --json url` is the resume check. `resume` simulates a PR already open for the
+    # branch; every other behaviour reports none, so the normal path creates one.
+    case "$*" in
+      *--json\ url*)
+        [ "$BEHAVIOUR" = "resume" ] && { echo "https://github.com/test/repo/pull/1"; exit 0; }
+        exit 1 ;;
+    esac
     [ "$BEHAVIOUR" = "notmerged" ] && { echo "OPEN"; exit 0; }
     echo "MERGED"; exit 0 ;;
 esac

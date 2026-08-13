@@ -97,8 +97,22 @@ SPEC_TITLE="$(grep -m1 '^title:' docs/specs/${SPEC_ID}*.md | sed 's/title: *//')
 # something already knowable in seconds.
 git checkout -q "$BRANCH" || die "could not switch to $BRANCH"
 
+# The Stop hook runs the gates too, and gates bind ports and name containers. Two at once produces
+# connection errors that read as product bugs rather than as contention.
+python3 - "$ROOT" <<'LOCKPY' || { restore_branch; die "another process is running the gates"; }
+import sys, os
+sys.path.insert(0, os.path.join(sys.argv[1], ".claude", "lib"))
+from gatelock import GateBusy, gate_lock
+try:
+    gate_lock(sys.argv[1], owner="deliver-run", timeout=1200).__enter__()
+except GateBusy as busy:
+    print(busy, file=sys.stderr); sys.exit(1)
+LOCKPY
+release_gate_lock() { rm -f "$ROOT/.claude/.gates.lock" 2>/dev/null; }
+
 echo '{}' | .claude/hooks/verify-gate.py >/dev/null 2>&1 \
-  || { restore_branch; die "gates fail on the branch"; }
+  || { release_gate_lock; restore_branch; die "gates fail on the branch"; }
+release_gate_lock
 say "gates green locally"
 
 .claude/scripts/spec-coverage.py "$SPEC_ID" >/dev/null 2>&1 \
@@ -142,6 +156,14 @@ ensure_label "needs-human" "d93f0b" "Risk classifier requires review before merg
 LABELS="agent-run"
 [ "$RISK" = "needs-human" ] && LABELS="$LABELS,needs-human"
 
+# Resume rather than duplicate. Killed after opening a pull request, a re-run used to die at
+# `gh pr create` with the work already pushed — leaving a PR it could not pick up, and a person to
+# close it and pay for another CI cycle.
+PR_URL="$("$GH" pr view "$BRANCH" --json url -q .url 2>/dev/null)"
+if [ -n "$PR_URL" ]; then
+  say "resuming the pull request already open for $BRANCH"
+  "$GH" pr edit "$PR_URL" --body "$BODY" >/dev/null 2>&1
+else
 PR_URL="$("$GH" pr create --base "$DEFAULT_BRANCH" --head "$BRANCH" \
   --title "$TITLE" --body "$BODY" --label "$LABELS" 2>&1 | tail -1)"
 case "$PR_URL" in
@@ -153,6 +175,7 @@ case "$PR_URL" in
     PR_URL="$("$GH" pr create --base "$DEFAULT_BRANCH" --head "$BRANCH" \
       --title "$TITLE" --body "$BODY" 2>&1 | tail -1)" ;;
 esac
+fi
 case "$PR_URL" in
   http*) say "opened $PR_URL" ;;
   *) restore_branch; die "could not create the pull request: $PR_URL" ;;
@@ -230,7 +253,8 @@ while :; do
   FAILING="$("$GH" run view --log-failed 2>/dev/null | tail -200)"
   [ -n "$FAILING" ] || FAILING="$("$GH" pr checks "$PR_URL" 2>/dev/null | tail -40)"
 
-  "$CLAUDE_BIN" -p "CI is failing on the pull request for $SPEC_ID.
+  mkdir -p docs/runs
+  REPAIR_OUT="$("$CLAUDE_BIN" -p "CI is failing on the pull request for $SPEC_ID.
 
 Failing output:
 
@@ -248,8 +272,21 @@ Fix the cause on this branch, then commit. Constraints:
 Run the local gates before committing." \
     --setting-sources project \
     --settings .claude/profiles/autonomy.settings.json \
-    --permission-mode dontAsk \
-    >> "docs/runs/${SPEC_ID}.log" 2>&1
+    --permission-mode dontAsk 2>&1)"
+  printf '%s\n' "$REPAIR_OUT" >> "docs/runs/${SPEC_ID}.log" 2>/dev/null || true
+
+  # An expired session is not a repair failure, and retrying cannot fix it. Without this the budget
+  # burns down two attempts having attempted nothing, and the report blames the code.
+  if printf '%s' "$REPAIR_OUT" \
+     | grep -qiE "oauth|session expired|not (logged in|authenticated)|invalid api key|401 unauthor"; then
+    .claude/scripts/notify.sh "AUTH-FAILED" "$SPEC_ID" "$PR_URL" >/dev/null 2>&1
+    restore_branch
+    echo
+    echo "The repair agent could not authenticate — the session has expired and cannot refresh itself."
+    echo "Re-authenticate, then re-run: this script resumes the pull request already open."
+    echo "$PR_URL is open with CI red."
+    exit 1
+  fi
 
   if [ -f BLOCKED.md ]; then
     .claude/scripts/notify.sh "BLOCKED" "$SPEC_ID" "$PR_URL" >/dev/null 2>&1

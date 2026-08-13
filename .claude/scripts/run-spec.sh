@@ -77,8 +77,14 @@ say "baseline gates green"
 # denial is a control we should verify held rather than assume — and this catches tampering explicitly
 # rather than leaving it to be noticed incidentally by some later check.
 guard_fingerprint() {
-  find .claude/hooks .claude/scripts .githooks trellis.json .claude/settings.json \
-       .claude/profiles -type f 2>/dev/null | sort | xargs shasum -a 256 2>/dev/null | shasum -a 256
+  # .github/workflows is included because CI is a gate: a run that can add or alter a workflow can
+  # change what verifies it. It was in the deny list but not here, so a denial that failed silently
+  # would have gone unnoticed.
+  #
+  # The listing is hashed as well as the contents, so ADDING a file is caught, not just editing one.
+  find .claude/hooks .claude/scripts .claude/profiles .githooks .github/workflows \
+       trellis.json .claude/settings.json -type f 2>/dev/null \
+    | sort | xargs shasum -a 256 2>/dev/null | shasum -a 256
 }
 GUARDS_BEFORE="$(guard_fingerprint)"
 

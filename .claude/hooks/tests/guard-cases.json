@@ -203,6 +203,22 @@
   [
    "reset --hard after a prose commit",
    "git commit -m \"wip\" && git reset -q --hard HEAD~3"
+  ],
+  [
+   "remove a guard hook",
+   "rm .claude/hooks/guard-production.py"
+  ],
+  [
+   "move settings away",
+   "mv .claude/settings.json /tmp/"
+  ],
+  [
+   "truncate a gate script",
+   "> .claude/hooks/verify-gate.py"
+  ],
+  [
+   "remove the autonomy profile",
+   "rm -rf .claude/profiles"
   ]
  ],
  "allow": [
@@ -377,6 +393,22 @@
   [
    "pushing the default branch is no longer blocked",
    "git push origin main"
+  ],
+  [
+   "unrelated rm in the same block as a hooks path",
+   "ruff check .claude/hooks/verify-gate.py\nrm -f .claude/.gates.lock"
+  ],
+  [
+   "rm elsewhere chained before reading a hook",
+   "rm -f /tmp/x && ruff check .claude/hooks/verify-gate.py"
+  ],
+  [
+   "reading a hook is not tampering",
+   "cat .claude/hooks/verify-gate.py"
+  ],
+  [
+   "removing the gate lock",
+   "rm -f .claude/.gates.lock"
   ]
  ]
 }

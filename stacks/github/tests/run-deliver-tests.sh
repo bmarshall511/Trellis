@@ -125,6 +125,7 @@ scenario green          BLOCKED  pull-request 1 "run was BLOCKED"
 scenario green          TAMPERED pull-request 1 "run was TAMPERED"
 scenario green          DONE     local        1 "mergeVia is local, refuses"
 scenario labelfail      DONE     pull-request 0 "repo has no labels and cannot create them"
+scenario resume         DONE     pull-request 0 "a pull request is already open, resumed not duplicated"
 
 # Where does the caller end up? Returning them to a branch the script chose was what made a retry
 # fail with "no run report" — the report lived on the branch they had just been moved off.
@@ -145,6 +146,22 @@ branch_case() {  # branch_case <mock> <start branch> <expected end branch> <labe
   teardown
 }
 
+# An expired session cannot be repaired by retrying, so it must stop at once rather than spend the
+# budget attempting nothing and then blaming the code.
+export MOCK_GH=authfail
+setup DONE pull-request
+MOCK_CLAUDE_SAVED="$MOCK_CLAUDE"
+MOCK_CLAUDE="$ROOT/stacks/github/tests/mock-repair-authfail.sh"
+check 1 "repair agent cannot authenticate, stops immediately"
+if grep -q "could not authenticate" "$SANDBOX/out.txt" 2>/dev/null; then
+  printf "  PASS  %-52s reported as auth, not as a code failure\n" "and says so plainly"
+else
+  printf "  FAIL  %-52s\n" "auth failure not distinguished from a code failure"
+  FAILS=$((FAILS + 1))
+fi
+MOCK_CLAUDE="$MOCK_CLAUDE_SAVED"
+teardown
+
 echo
 echo "Where the caller ends up:"
 branch_case mergerefused agent/SPEC-001 agent/SPEC-001 "failure from the agent branch returns there"
@@ -153,7 +170,7 @@ branch_case green        agent/SPEC-001 main           "success lands on the def
 
 echo
 if [ $FAILS -eq 0 ]; then
-  echo "deliver: all 15 cases correct"
+  echo "deliver: all 18 cases correct"
 else
   echo "$FAILS case(s) wrong"
 fi
