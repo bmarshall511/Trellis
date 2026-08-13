@@ -45,6 +45,18 @@
    "git commit --no-verify -m wip"
   ],
   [
+   "bypass flag on push, not just commit",
+   "git push --no-verify origin main"
+  ],
+  [
+   "heredoc into an interpreter still executes, so it is still read",
+   "cd /repo\nbash <<'EOF'\npsql -c 'DROP TABLE users;'\nEOF"
+  ],
+  [
+   "heredoc into python is not a file write",
+   "cd /repo\npython3 - <<'EOF'\nimport os; os.system('psql -c \"TRUNCATE users\"')\nEOF"
+  ],
+  [
    "env-prefix bypass",
    "LEFTHOOK=0 git commit -m skip"
   ],
@@ -409,6 +421,34 @@
   [
    "removing the gate lock",
    "rm -f .claude/.gates.lock"
+  ],
+  [
+   "searching for the name of the rule is not invoking it",
+   "grep -n \"no-verify\" .claude/hooks/guards/base.json"
+  ],
+  [
+   "writing a decision record that mentions the flag",
+   "echo 'never use --no-verify' >> docs/decisions/gates.md"
+  ],
+  [
+   "another tool's unrelated flag with the same prefix",
+   "curl --no-verify-peer https://example.com"
+  ],
+  [
+   "heredoc to a file on its own line is data, not commands",
+   "cd /repo\ncat > notes.md <<'EOF'\nDROP TABLE was the failure mode\nEOF"
+  ],
+  [
+   "heredoc into git commit after other commands on earlier lines",
+   "cd /repo\ngit add -A\ngit commit -F - <<'EOF'\nfix: DROP TABLE and git push origin main\nEOF"
+  ],
+  [
+   "prose about a bypass flag written to a file",
+   "cd /repo\ncat > msg.txt <<'EOF'\ngit will not set this on clone.\nSo --no-verify stays blocked.\nEOF"
+  ],
+  [
+   "a mention on one line must not complete a pattern on another",
+   "ruff check .\necho 'the git history rewrite section'\necho '--hard resets are blocked'"
   ]
  ]
 }

@@ -234,7 +234,7 @@ production guard in this repo allowed everything through, and only a test caught
 ## Verifying it
 
 ```bash
-.claude/hooks/tests/run.py                   # 102 production-guard cases
+.claude/hooks/tests/run.py                   # 106 production-guard cases
 .claude/scripts/tests/run-secret-tests.py    # 26 secret-scanner cases
 .claude/scripts/tests/run-loop-tests.sh      #  6 unattended-run scenarios
 .claude/scripts/tests/run-merge-tests.sh     # 10 local-merge cases
@@ -242,8 +242,9 @@ production guard in this repo allowed everything through, and only a test caught
 .claude/scripts/tests/run-integrity-tests.sh # 11 dangling-reference cases
 .claude/lib/tests/test-frontmatter.py        # 20 frontmatter-parser cases
 .claude/lib/tests/test-gatelock.py           # 11 gate-lock cases
+.claude/lib/tests/test-gates.py              # 18 gate-runner cases
 stacks/github/tests/run-risk-tests.py        # 32 risk-classification cases
-stacks/github/tests/run-deliver-tests.sh     # 20 pull-request delivery cases
+stacks/github/tests/run-deliver-tests.sh     # 21 pull-request delivery cases
 
 .claude/scripts/check-integrity.py           # cross-references resolve
 .claude/scripts/spec-lint.py                 # specs meet the readiness checklist

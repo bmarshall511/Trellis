@@ -195,6 +195,38 @@ else
 fi
 teardown
 
+# Delivery verifies, then pushes — and pushing runs pre-push, which used to run every gate again on
+# the same commit seconds later. Two full cycles back to back, around two minutes of duplicated work
+# on a project with a11y and perf gates, and the window in which a third gate run could start.
+#
+# Counting is the only honest way to check this: both cycles passed, so nothing failed and nothing
+# in the log said the gates had run twice.
+export MOCK_GH=green
+setup DONE pull-request
+COUNTER="$SANDBOX/gate-runs"
+: > "$COUNTER"
+python3 - "$COUNTER" <<'PY'
+import json, sys
+config = json.load(open("trellis.json"))
+config["gates"]["test"] = "echo x >> %s; node --test tests/ 2>/dev/null" % sys.argv[1]
+with open("trellis.json", "w") as handle:
+    json.dump(config, handle)
+PY
+git add -A >/dev/null && git commit -qm "counting gate" && git push -q origin main 2>/dev/null
+git checkout -q agent/SPEC-001 && git merge -q main -m merge 2>/dev/null && git checkout -q main
+git config core.hooksPath .githooks   # a real project sets this; the sandbox did not, so pre-push never fired
+TRELLIS_GH_BIN="$MOCK_GH_BIN" TRELLIS_CLAUDE_BIN="$MOCK_CLAUDE" \
+TRELLIS_CHECK_TIMEOUT=6 TRELLIS_MERGE_TIMEOUT=6 \
+  ./stacks/github/scripts/deliver-run.sh SPEC-001 >"$SANDBOX/out.txt" 2>&1
+RUNS="$(wc -l < "$COUNTER" | tr -d ' ')"
+if [ "$RUNS" = "1" ]; then
+  printf "  PASS  %-52s ran once\n" "the gates run once per delivery, not once per push"
+else
+  printf "  FAIL  %-52s ran %s times\n" "the gates run once per delivery, not once per push" "$RUNS"
+  FAILS=$((FAILS + 1))
+fi
+teardown
+
 # An expired session cannot be repaired by retrying, so it must stop at once rather than spend the
 # budget attempting nothing and then blaming the code.
 export MOCK_GH=authfail
@@ -219,7 +251,7 @@ branch_case green        agent/SPEC-001 main           "success lands on the def
 
 echo
 if [ $FAILS -eq 0 ]; then
-  echo "deliver: all 20 cases correct"
+  echo "deliver: all 21 cases correct"
 else
   echo "$FAILS case(s) wrong"
 fi

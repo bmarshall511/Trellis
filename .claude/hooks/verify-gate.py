@@ -15,20 +15,16 @@ Exit 0 lets the turn end. Exit 2 blocks it and returns the failing output to the
 """
 import json
 import os
-import subprocess
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
-from gatelock import GateBusy, gate_lock  # noqa: E402
+from gates import GateBusy, declared_gates, run_gates
 
 HOOK_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HOOK_DIR, "..", ".."))
 STATE_FILE = os.path.join(REPO_ROOT, ".claude", ".verify-state.json")
 
-# Cheapest first. A type error should surface in seconds, not after the test suite.
-GATE_ORDER = ["types", "lint", "test", "a11y", "perf"]
 DEFAULT_MAX_CONSECUTIVE = 3
-TIMEOUT_SECONDS = 900
 
 
 def load_config():
@@ -56,24 +52,6 @@ def write_state(state):
         pass  # State is an optimisation, not a correctness requirement.
 
 
-def run_gate(name, command):
-    """Return (ok, combined_output). A gate must exit non-zero on failure."""
-    try:
-        # shell=True is the design: gate commands come from trellis.json as shell strings so a
-        # project can express any pipeline. They are the project's own config, not external input.
-        proc = subprocess.run(  # noqa: S602
-            command, shell=True, cwd=REPO_ROOT, capture_output=True,
-            text=True, timeout=TIMEOUT_SECONDS,
-        )
-    except subprocess.TimeoutExpired:
-        return False, "gate '%s' exceeded %ds and was killed" % (name, TIMEOUT_SECONDS)
-    except Exception as exc:
-        return False, f"gate '{name}' could not run: {exc}"
-    if proc.returncode == 0:
-        return True, ""
-    return False, ((proc.stdout or "") + (proc.stderr or "")).strip()
-
-
 def main():  # noqa: PLR0911 — each early return is a distinct "do not block" condition
     try:
         event = json.load(sys.stdin)
@@ -88,8 +66,7 @@ def main():  # noqa: PLR0911 — each early return is a distinct "do not block" 
     if config is None:
         return 0  # No trellis.json yet — nothing to verify against. Not an error.
 
-    gates = config.get("gates") or {}
-    declared = [(n, gates[n]) for n in GATE_ORDER if gates.get(n)]
+    declared = declared_gates(config)
     if not declared:
         return 0
 
@@ -106,9 +83,9 @@ def main():  # noqa: PLR0911 — each early return is a distinct "do not block" 
     # already running the gates this hook wants to run. Long enough to sit out a gate run that is
     # nearly done, then say so plainly.
     try:
-        lock = gate_lock(REPO_ROOT, owner="verify-gate",
-                         timeout=int(os.environ.get("TRELLIS_GATE_TIMEOUT", "240")))
-        lock.__enter__()
+        run_result = run_gates(
+            REPO_ROOT, declared,
+            lock_timeout=int(os.environ.get("TRELLIS_GATE_TIMEOUT", "240")))
     except GateBusy as busy:
         sys.stderr.write(
             "Trellis: could not run the gates — %s\n\nThis turn is NOT verified. Do not report the "
@@ -116,43 +93,34 @@ def main():  # noqa: PLR0911 — each early return is a distinct "do not block" 
             "rather than re-running the gates.\n" % busy)
         return 2
 
-    try:
-        return run_declared(declared, state, max_consecutive)
-    finally:
-        lock.__exit__()
+    ok, name, output = run_result
+    if ok:
+        write_state({"consecutive_blocks": 0})
+        return 0
 
+    command = dict(declared).get(name, name)
+    blocks = state.get("consecutive_blocks", 0) + 1
+    write_state({"consecutive_blocks": blocks, "last_failed_gate": name})
 
-def run_declared(declared, state, max_consecutive):
-    for name, command in declared:
-        ok, output = run_gate(name, command)
-        if ok:
-            continue
-
-        blocks = state.get("consecutive_blocks", 0) + 1
-        write_state({"consecutive_blocks": blocks, "last_failed_gate": name})
-
-        if blocks > max_consecutive:
-            write_state({"consecutive_blocks": 0})
-            sys.stderr.write(
-                "Trellis: gate '%s' has failed %d times in a row. Letting the turn end so this\n"
-                "does not loop indefinitely.\n\nThis work is NOT complete. Do not report it as done.\n"
-                "Report the failure to the user and stop.\n\n--- %s output ---\n%s\n"
-                % (name, blocks, name, output[:4000])
-            )
-            return 0
-
+    if blocks > max_consecutive:
+        write_state({"consecutive_blocks": 0})
         sys.stderr.write(
-            "Trellis: the '%s' gate is failing, so this work is not complete.\n\n"
-            "Fix the failures below, then finish. Do not mark the spec done, do not summarise this\n"
-            "as a success, and do not disable or weaken the gate. If the gate itself is wrong, say so\n"
-            "and stop rather than working around it.\n\n"
-            "Attempt %d of %d before this stops blocking.\n\n--- %s: %s ---\n%s\n"
-            % (name, blocks, max_consecutive, name, command, output[:6000])
+            "Trellis: gate '%s' has failed %d times in a row. Letting the turn end so this\n"
+            "does not loop indefinitely.\n\nThis work is NOT complete. Do not report it as done.\n"
+            "Report the failure to the user and stop.\n\n--- %s output ---\n%s\n"
+            % (name, blocks, name, output[:4000])
         )
-        return 2
+        return 0
 
-    write_state({"consecutive_blocks": 0})
-    return 0
+    sys.stderr.write(
+        "Trellis: the '%s' gate is failing, so this work is not complete.\n\n"
+        "Fix the failures below, then finish. Do not mark the spec done, do not summarise this\n"
+        "as a success, and do not disable or weaken the gate. If the gate itself is wrong, say so\n"
+        "and stop rather than working around it.\n\n"
+        "Attempt %d of %d before this stops blocking.\n\n--- %s: %s ---\n%s\n"
+        % (name, blocks, max_consecutive, name, command, output[:6000])
+    )
+    return 2
 
 
 if __name__ == "__main__":

@@ -104,13 +104,18 @@ git checkout -q "$BRANCH" || die "could not switch to $BRANCH"
 #
 # Exit 2 means the gates could not be run at all — contention, or the loop guard. That is not the
 # same as red gates, and saying "gates fail on the branch" for it sends the reader to the code.
-echo '{}' | .claude/hooks/verify-gate.py >/dev/null 2>&1
+# Keep the output. Discarding it made a gate failure arrive in the delivery log as a bare exit code,
+# while the same failure printed "Another next build process is already running" everywhere else —
+# four reproduction attempts to find what one line of output would have said outright.
+GATE_OUT="$(echo '{}' | .claude/hooks/verify-gate.py 2>&1)"
 GATE_STATUS=$?
 if [ "$GATE_STATUS" = "2" ]; then
   restore_branch
+  printf '%s\n' "$GATE_OUT" >&2
   die "could not run the gates (another gate run is in flight, or the repair loop is stuck) — nothing was verified"
 elif [ "$GATE_STATUS" != "0" ]; then
   restore_branch
+  printf '%s\n' "$GATE_OUT" >&2
   die "gates fail on the branch"
 fi
 say "gates green locally"
@@ -295,8 +300,10 @@ Run the local gates before committing." \
     exit 3
   fi
 
-  if ! echo '{}' | .claude/hooks/verify-gate.py >/dev/null 2>&1; then
+  REPAIR_GATE_OUT="$(echo '{}' | .claude/hooks/verify-gate.py 2>&1)"
+  if [ $? != 0 ]; then
     say "repair did not make the local gates pass"
+    printf '%s\n' "$REPAIR_GATE_OUT" >&2
     continue
   fi
 

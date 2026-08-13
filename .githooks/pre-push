@@ -2,28 +2,56 @@
 # Trellis pre-push. Runs the gates the project declares in trellis.json.
 #
 # Later than pre-commit so slow suites do not tax every commit, but before anything leaves the machine.
+#
+# The gates run through .claude/lib/gates.py, which is the only thing that runs them. This hook used
+# to have its own copy of the loop — the same order, the same stop-at-first-failure — and when the
+# gate lock arrived that copy did not take it. Delivery verifies and then pushes, so a locked cycle
+# was followed instantly by an unlocked one, and the Stop hook could start a third build on top.
 set -uo pipefail
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT" || exit 0
 
 [ -f trellis.json ] || exit 0   # no project declared yet, nothing to run
 
-read -r -d '' PY <<'PYEOF'
-import json, subprocess, sys
+python3 - <<'PYEOF'
+import json, os, sys
+
+sys.path.insert(0, os.path.join(os.getcwd(), ".claude", "lib"))
 try:
-    gates = (json.load(open("trellis.json")).get("gates") or {})
+    from gates import GateBusy, declared_gates, run_gates, stamp_is_valid
+except ImportError as exc:
+    print("Trellis: cannot load the gate runner: %s" % exc, file=sys.stderr)
+    sys.exit(1)  # fail closed: unable to verify is not the same as verified
+
+root = os.getcwd()
+try:
+    with open("trellis.json") as handle:
+        config = json.load(handle)
 except Exception as exc:
-    print("trellis.json is unreadable: %s" % exc, file=sys.stderr); sys.exit(1)
-order = ["types", "lint", "test", "a11y", "perf"]
-declared = [(n, gates[n]) for n in order if gates.get(n)]
+    print("trellis.json is unreadable: %s" % exc, file=sys.stderr)
+    sys.exit(1)
+
+declared = declared_gates(config)
 if not declared:
-    print("no gates declared"); sys.exit(0)
-for name, command in declared:
-    print("  %s: %s" % (name, command))
-    result = subprocess.run(command, shell=True)
-    if result.returncode != 0:
-        print("\n'%s' failed. Push blocked." % name, file=sys.stderr)
-        sys.exit(1)
+    print("no gates declared")
+    sys.exit(0)
+
+# Already proved green on this exact commit, with these exact gates, moments ago — which is what
+# delivery does immediately before pushing. Anything less certain runs them.
+if stamp_is_valid(root, declared):
+    print("gates already verified on this commit")
+    sys.exit(0)
+
+try:
+    ok, failed, _ = run_gates(root, declared, stream=True,
+                              lock_timeout=int(os.environ.get("TRELLIS_GATE_TIMEOUT", "240")),
+                              announce=lambda n, c: print("  %s: %s" % (n, c), flush=True))
+except GateBusy as busy:
+    print("\nTrellis: %s\n\nPush blocked — nothing was verified." % busy, file=sys.stderr)
+    sys.exit(1)
+
+if not ok:
+    print("\n'%s' failed. Push blocked." % failed, file=sys.stderr)
+    sys.exit(1)
 print("all gates green")
 PYEOF
-python3 -c "$PY"

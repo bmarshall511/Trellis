@@ -25,11 +25,12 @@ because the thing delivery invokes is the Stop hook, which locks correctly on it
 would be waited on by its own child for the full timeout and then told the gates were red. So a
 nested acquire is a no-op rather than a deadlock, tracked through the environment: see HELD_ENV.
 """
+import contextlib
 import errno
 import os
 import time
 
-__all__ = ["gate_lock", "GateBusy"]
+__all__ = ["GateBusy", "gate_lock"]
 
 LOCK_NAME = ".claude/.gates.lock"
 STALE_AFTER = 3600  # an hour: longer than any honest gate run, shorter than a forgotten lock
@@ -94,7 +95,7 @@ def _held_by_us(path):
     return pid is not None and pid == holder and _alive(holder)
 
 
-class gate_lock:  # noqa: N801 — used as a context manager, reads as one
+class gate_lock:
     """Serialises gate runs.
 
         with gate_lock(root, owner="verify-gate", timeout=900):
@@ -124,10 +125,8 @@ class gate_lock:  # noqa: N801 — used as a context manager, reads as one
             fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
         except FileExistsError:
             if _stale(self.path):
-                try:
+                with contextlib.suppress(OSError):
                     os.unlink(self.path)
-                except OSError:
-                    pass
                 return False  # try again next poll rather than racing to recreate it
             return False
         except OSError:
@@ -157,10 +156,8 @@ class gate_lock:  # noqa: N801 — used as a context manager, reads as one
 
     def __exit__(self, *_):
         if self.held:
-            try:
+            with contextlib.suppress(OSError):
                 os.unlink(self.path)
-            except OSError:
-                pass
             os.environ.pop(HELD_ENV, None)
             self.held = False
         return False  # a reentrant acquire releases nothing: the outermost holder still owns it

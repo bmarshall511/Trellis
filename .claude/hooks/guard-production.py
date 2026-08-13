@@ -35,7 +35,11 @@ PROSE_COMMANDS = re.compile(
 
 # `git add -A && git commit -m "..."` is one of the most common shapes there is. Anchoring prose
 # detection to the start of the whole command missed it, so each segment is judged on its own.
-SEGMENT = re.compile(r"(\s*(?:&&|\|\||;|\|)\s*)")
+#
+# A newline separates commands as surely as `;` does, and leaving it out meant a multi-line block
+# was judged as a single long segment — so text on one line could complete a pattern begun on
+# another. Every separator list here has now been wrong once by omitting the newline.
+SEGMENT = re.compile(r"(\s*(?:&&|\|\||;|\||\n)\s*)")
 
 # A message containing a command substitution is not prose. The shell evaluates `$(...)` and backticks
 # BEFORE git ever sees the argument, so stripping the quotes would hide a command that genuinely runs.
@@ -52,8 +56,19 @@ HEREDOC = re.compile(r"<<-?\s*'?(\w+)'?.*?^\1$", re.M | re.S)
 # A heredoc redirected INTO A FILE is data being written, not commands being run. `cat > x.sh <<EOF`
 # writes text; nothing in that text executes. Piping one to an interpreter — `bash <<EOF` — does
 # execute, and is left alone.
+#
+# The separator list here omitted the newline, which is how a heredoc is almost always written: on
+# its own line, after earlier commands. So `cd x` followed by `cat > f <<EOF` was not recognised as
+# writing a file, and the text being written was scanned as though it were commands — a commit
+# message describing a blocked flag read as an attempt to use one.
 HEREDOC_TO_FILE = re.compile(
-    r"(?:^|[|;&]\s*)(?:cat|tee|printf|echo)?\s*>{1,2}\s*[\w./~$-]+\s*<<-?\s*'?\w+'?")
+    r"(?:^|[|;&\n]\s*)(?:cat|tee|printf|echo)?\s*>{1,2}\s*[\w./~$-]+\s*<<-?\s*'?\w+'?")
+
+# The same, for a heredoc feeding a command that exists to record prose — `git commit -F - <<EOF`.
+# Anchored to a separator so it is the command receiving the body, not a mention of one inside it.
+HEREDOC_TO_PROSE = re.compile(
+    r"(?:^|[|;&\n]\s*)(?:git\s+(?:commit|tag|merge|revert|stash|notes)|"
+    r"gh\s+(?:pr|issue|release)\s+\w+)\b[^\n]*<<-?\s*'?\w+'?", re.I)
 
 
 def load_json(path):
@@ -97,11 +112,16 @@ def normalise(command):
 
         return PROSE_ARGS.sub(replace, segment)
 
-    # Heredoc bodies may contain && or ;, so they must be handled before splitting on separators.
+    # Heredoc bodies may contain &&, ; or newlines, so they must be handled before splitting on
+    # separators — a body torn away from the command it feeds is judged as commands of its own.
+    #
+    # What makes a body data is the command receiving it: one that writes a file, or one that exists
+    # to record prose. Both are matched wherever they appear, not only at the start, because
+    # `git add -A && git commit -F - <<EOF` is the ordinary shape. An interpreter reading a heredoc
+    # — `bash <<EOF`, `python3 - <<EOF` — is left alone, because that body really does execute.
     text = command.replace("\\\n", " ")
-    if HEREDOC.search(text) and (PROSE_COMMANDS.match(text.lstrip())
-                                 or HEREDOC_TO_FILE.search(text)):
-        text = HEREDOC.sub(" ", text) if HEREDOC_TO_FILE.search(text) else strip_prose(text)
+    if HEREDOC.search(text) and (HEREDOC_TO_FILE.search(text) or HEREDOC_TO_PROSE.search(text)):
+        text = HEREDOC.sub(" ", text)
     text = "".join(part if SEGMENT.fullmatch(part) else strip_prose(part)
                    for part in SEGMENT.split(text))
 

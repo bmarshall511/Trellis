@@ -61,7 +61,8 @@
     },
     {
       "id": "hook-bypass",
-      "pattern": "(--no-verify|\\bHUSKY=0\\b|\\bLEFTHOOK=0\\b|\\bSKIP_HOOKS\\b|\\bPRE_COMMIT_ALLOW_NO_CONFIG\\b)",
+      "$comment": "The flag has to be reaching a command that acts on it. Bare `--no-verify` matched anywhere in the string, so `grep -n \"no-verify\" base.json` — reading this very rule — was blocked as an attempt to bypass the gates. Searching for the name of a thing is not doing it. The environment-variable forms stay unanchored: those are prefixes, so their position already means they are being set rather than mentioned.",
+      "pattern": "\\b(git|hg|jj)\\s[^|;&\\n]*--no-verify|\\bHUSKY=0\\b|\\bLEFTHOOK=0\\b|\\bSKIP_HOOKS=|\\bPRE_COMMIT_ALLOW_NO_CONFIG=",
       "reason": "Bypassing quality gates. If a gate is wrong, fix the gate."
     },
     {
