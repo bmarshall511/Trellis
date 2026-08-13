@@ -5,7 +5,7 @@
 
 _No `trellis.json` — the project is not set up yet._
 
-11 project files, 0 of them code.
+12 project files, 0 of them code.
 
 _97 framework files (Trellis itself) are excluded — see `.claude/framework-paths.json`._
 
@@ -14,7 +14,7 @@ _97 framework files (Trellis itself) are excluded — see `.claude/framework-pat
 | Area | Files | What it is |
 |---|---:|---|
 | `(root)` | 5 | Top-level config and docs |
-| `docs` | 6 | Specs, approved mockups, decision records, session handoffs, and the generated map. |
+| `docs` | 7 | Specs, approved mockups, decision records, session handoffs, and the generated map. |
 
 ## Changing most
 
@@ -27,12 +27,12 @@ Last 30 days. Where the work is, and where regressions are most likely.
 - `.claude/scripts/validate-config.py` (4 commits)
 - `.claude/hooks/write-handoff.py` (4 commits)
 - `.claude/scripts/tests/run-secret-tests.py` (4 commits)
-- `.claude/scripts/mockup.py` (3 commits)
-- `.claude/scripts/build-map.py` (3 commits)
-- `.claude/scripts/spec-coverage.py` (3 commits)
+- `.claude/hooks/verify-gate.py` (3 commits)
+- `.claude/scripts/run-spec.sh` (3 commits)
+- `stacks/github/scripts/deliver-run.sh` (3 commits)
 
 ---
 
-Generated 2026-08-13 14:33 UTC from commit `3798cf5`.
+Generated 2026-08-13 14:36 UTC from commit `a101637`.
 
 If this disagrees with the code, the code is right — regenerate with `.claude/scripts/build-map.py`.
