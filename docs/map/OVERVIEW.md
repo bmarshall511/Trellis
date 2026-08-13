@@ -21,11 +21,11 @@ _99 framework files (Trellis itself) are excluded — see `.claude/framework-pat
 Last 30 days. Where the work is, and where regressions are most likely.
 
 - `.claude/scripts/check-integrity.py` (7 commits)
-- `.claude/hooks/guard-production.py` (5 commits)
+- `.claude/hooks/guard-production.py` (6 commits)
+- `.claude/hooks/verify-gate.py` (5 commits)
+- `stacks/github/scripts/deliver-run.sh` (5 commits)
+- `stacks/github/tests/run-deliver-tests.sh` (5 commits)
 - `.claude/hooks/session-start.py` (5 commits)
-- `.claude/hooks/verify-gate.py` (4 commits)
-- `stacks/github/scripts/deliver-run.sh` (4 commits)
-- `stacks/github/tests/run-deliver-tests.sh` (4 commits)
 - `.claude/scripts/run-queue.sh` (4 commits)
 - `.claude/scripts/validate-config.py` (4 commits)
 - `.claude/hooks/write-handoff.py` (4 commits)
@@ -33,6 +33,6 @@ Last 30 days. Where the work is, and where regressions are most likely.
 
 ---
 
-Generated 2026-08-13 17:20 UTC from commit `3f626a0`.
+Generated 2026-08-13 23:56 UTC from commit `169a7a8`.
 
 If this disagrees with the code, the code is right — regenerate with `.claude/scripts/build-map.py`.

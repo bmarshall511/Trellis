@@ -234,16 +234,16 @@ production guard in this repo allowed everything through, and only a test caught
 ## Verifying it
 
 ```bash
-.claude/hooks/tests/run.py                   # 106 production-guard cases
+.claude/hooks/tests/run.py                   # 118 production-guard cases
 .claude/scripts/tests/run-secret-tests.py    # 26 secret-scanner cases
-.claude/scripts/tests/run-loop-tests.sh      #  6 unattended-run scenarios
+.claude/scripts/tests/run-loop-tests.sh      #  7 unattended-run scenarios
 .claude/scripts/tests/run-merge-tests.sh     # 10 local-merge cases
 .claude/scripts/tests/run-mockup-tests.sh    #  8 approval-lock cases
 .claude/scripts/tests/run-integrity-tests.sh # 11 dangling-reference cases
 .claude/lib/tests/test-frontmatter.py        # 20 frontmatter-parser cases
 .claude/lib/tests/test-gatelock.py           # 11 gate-lock cases
 .claude/lib/tests/test-gates.py              # 18 gate-runner cases
-stacks/github/tests/run-risk-tests.py        # 32 risk-classification cases
+stacks/github/tests/run-risk-tests.py        # 58 risk-classification cases
 stacks/github/tests/run-deliver-tests.sh     # 21 pull-request delivery cases
 
 .claude/scripts/check-integrity.py           # cross-references resolve
@@ -272,10 +272,16 @@ integrity hashes and would have blocked the first commit of any Node project.
 
 The unattended runner is tested against six scenarios, three of them adversarial: an agent that claims
 success with a gate red, one that claims success with a criterion untested, and one that disables the
-gates and then claims success. All three are caught. The risk classifier — which decides what may merge
-without review — is tested against 32 cases, including that an additive migration is auto-mergeable
-while the same file containing `drop column` is not. Pull-request delivery is tested against 11 more,
-of which ten are ways it should stop rather than merge.
+gates and then claims success, and one that empties a stack module's production guard rules while
+implementing the spec correctly. All four are caught.
+
+The risk classifier — which decides what may merge without review — is tested against 58 cases. Those
+include both directions of the same distinction: an additive migration auto-merges while the same
+file containing `drop column` does not; a `package.json` change that only touches scripts auto-merges
+while one that adds a dependency does not; a component named `terms-editor.tsx` auto-merges while the
+terms page itself does not. Both directions matter, because a gate that stops work for the wrong
+reason teaches everyone to wave it through, and then it is not a gate. Pull-request delivery is
+tested against 21 more, most of them ways it should stop rather than merge.
 
 Trellis has also been used on a real project by someone other than its author, which found three
 further defects — six copies of one parser sharing a bug, an approval lock that missed brand assets,

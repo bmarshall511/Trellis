@@ -81,7 +81,13 @@
       "Write(./.github/workflows/**)",
       "Write(./.claude/profiles/**)",
       "Write(./.claude/settings.json)",
-      "Write(./trellis.json)"
+      "Write(./trellis.json)",
+      "Edit(./.claude/lib/**)",
+      "Write(./.claude/lib/**)",
+      "Edit(./stacks/**)",
+      "Write(./stacks/**)",
+      "Edit(./.claude/framework-paths.json)",
+      "Write(./.claude/framework-paths.json)"
     ],
     "$denyNotes": {
       "unrecoverable": "Force pushes, hard resets and history rewrites destroy work that no green test suite can bring back. Everything else a run does is a commit, and commits revert.",
@@ -91,5 +97,8 @@
       "edit-and-write": "Every protected path carries BOTH an Edit and a Write rule. Edit governs changing a file that exists; Write governs creating one. Guarding only Edit would leave a run free to drop a NEW hook into .claude/hooks/, which is as good as editing one.",
       "not-the-real-control": "Treat these as a first line, not the line. Permission-rule semantics are the harness's, not ours, and a rule that silently does nothing looks exactly like a rule that works. The control that actually holds is the fingerprint run-spec.sh takes of every guarded path before the run and checks afterwards: if any of it moved, the run is TAMPERED and every other result from it is discarded, regardless of which permission rules fired."
     }
-  }
+  },
+  "$denyNotes": [
+    "stacks/** was missing and is the one that mattered: each module's guard.json holds the production deny rules, and the risk policy, the classifier reading it and deliver-run.sh all live there too. A run could edit the thing that judges it. .claude/lib/** is here because the gate runner and the gate lock moved into it."
+  ]
 }

@@ -18,20 +18,23 @@
     },
     {
       "id": "trellis-guardrails",
+      "$comment": "stacks/** belongs here and was missing. Stack modules hold guard.json — twelve production deny rules across supabase and github, including the ones that stop a run reaching a remote database — plus this policy file and the classifier that reads it, plus deliver-run.sh. All of it was auto-mergeable, so a run could have deleted the rules protecting production and merged that change without anyone seeing it.",
       "paths": [".claude/hooks/**", ".claude/scripts/**", ".claude/settings.json",
-                ".claude/profiles/**", ".githooks/**", "trellis.json"],
+                ".claude/profiles/**", ".claude/lib/**", ".claude/framework-paths.json",
+                ".githooks/**", "trellis.json", "stacks/**"],
       "decision": "needs-human",
       "reason": "Guardrails and gate definitions. Same reasoning as CI config."
     },
     {
       "id": "destructive-migration",
       "paths": ["**/migrations/**", "**/migrate/**", "db/**.sql", "supabase/migrations/**"],
+      "$comment": "The NOT NULL pattern used to match the words anywhere, so `CREATE TABLE ... body text NOT NULL` was held for review. A table being created has no rows, so a NOT NULL column on it cannot fail and locks nothing. The risk is adding a NOT NULL column to a table that already has data — ALTER TABLE ... ADD COLUMN ... NOT NULL with no DEFAULT — which errors on any non-empty table and takes a rewrite lock where it does not. That is the property; NOT NULL by itself is just a column definition.",
       "contentPatterns": [
         "(?i)\\bdrop\\s+(table|column|schema|database|type|constraint)\\b",
         "(?i)\\btruncate\\b",
         "(?i)\\balter\\s+table\\s+\\S+\\s+drop\\b",
         "(?i)\\bdelete\\s+from\\b(?![^;]*\\bwhere\\b)",
-        "(?i)\\bnot\\s+null\\b(?![^;]*\\bdefault\\b)"
+        "(?i)\\balter\\s+table\\b[^;]*\\badd\\s+(?:column\\s+)?[^;]*\\bnot\\s+null\\b(?![^;]*\\bdefault\\b)"
       ],
       "decision": "needs-human",
       "reason": "Irreversible or lock-taking schema change. Data removed by a migration is not recoverable from a green test suite."
@@ -57,13 +60,38 @@
       "reason": "Security headers and edge configuration. Weakening one is invisible in a diff review that is not looking for it."
     },
     {
-      "id": "dependencies",
-      "paths": ["package.json", "package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock",
-                "requirements.txt", "pyproject.toml", "poetry.lock", "uv.lock",
-                "Gemfile", "Gemfile.lock", "go.mod", "go.sum", "Cargo.toml", "Cargo.lock",
-                "composer.json", "composer.lock"],
+      "id": "dependency-lockfiles",
+      "$comment": "A lockfile has no contents that are not the dependency graph, so any change to one is a dependency change. This is the rule that does the real work — the package managers write the manifest and the lockfile together, so a dependency added by a tool rather than by hand is caught here even if the manifest rule below misses the shape.",
+      "paths": ["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "bun.lock",
+                "poetry.lock", "uv.lock", "Gemfile.lock", "go.sum", "Cargo.lock",
+                "composer.lock", "requirements.txt"],
       "decision": "needs-human",
       "reason": "A new dependency is the highest-consequence thing a run can add, and the thing a prompt-injected agent would most want to add."
+    },
+    {
+      "id": "dependency-manifests",
+      "$comment": "Held for review only when the added lines declare a dependency. A manifest also holds scripts, metadata, and tool config: editing `\"test\": \"vitest\"` in package.json was being held as if it added a package. The property that separates them is the value — a dependency's value is a version range, a script's is a shell command.",
+      "paths": ["package.json", "pyproject.toml", "Gemfile", "go.mod", "Cargo.toml",
+                "composer.json"],
+      "contentPatterns": [
+        "\"[\\w@/.-]+\"\\s*:\\s*\"(?:[\\^~><=]|\\d+[\\d.]*\\s*\"|\\*\"|latest\"|workspace:|npm:|file:|link:|git\\+|github:)",
+        "(?im)^\\s*gem\\s+['\"]",
+        "(?im)^\\s*require\\s+[\\w./-]+\\s+v\\d",
+        "(?im)^\\s*[\\w-]+\\s*=\\s*[\"{][^\"}]*[\\d^~*]",
+        "(?im)^\\s*[\\w.-]+\\s*(?:[><=~^!]=?|@)\\s*[\\dv*]",
+        "(?im)^\\s*\"[\\w@/.-]+\"\\s*,?\\s*$",
+        "\"[\\w.-]+\\s*(?:[><=~!]=?|\\^)\\s*[\\dv*]",
+        "(?im)^\\s*(?:dependencies|dev-dependencies|build-dependencies|install_requires|require)\\s*[=(]"
+      ],
+      "decision": "needs-human",
+      "reason": "A new dependency is the highest-consequence thing a run can add, and the thing a prompt-injected agent would most want to add."
+    },
+    {
+      "id": "manifest-without-dependency-change",
+      "paths": ["package.json", "pyproject.toml", "Gemfile", "go.mod", "Cargo.toml",
+                "composer.json"],
+      "decision": "auto",
+      "reason": "A manifest change that declares no dependency — scripts, metadata, tool configuration. The lockfile rule still holds anything a package manager installed."
     },
     {
       "id": "secrets-and-env",
@@ -86,8 +114,11 @@
     },
     {
       "id": "public-content",
-      "paths": ["**/robots.txt", "**/sitemap*", "**/*.legal.*", "**/privacy*", "**/terms*",
-                "**/LICENSE*"],
+      "$comment": "`**/terms*` matched terms-editor.tsx — an admin component for editing the document, not the document. A prefix is not the property; being the published file is. So: the whole basename is the document name (terms.mdx, privacy.html), or it sits in a route directory of that name (app/terms/page.tsx). A component whose name merely begins with one of these words is ordinary code, and holding it taught everyone to wave the gate through.",
+      "paths": ["**/robots.txt", "**/sitemap.xml", "**/sitemap-*.xml", "**/*.legal.*",
+                "**/privacy.*", "**/terms.*", "**/privacy-policy.*", "**/terms-of-*.*",
+                "**/privacy/**", "**/terms/**", "**/legal/**",
+                "LICENSE", "LICENSE.*", "**/LICENSE", "**/LICENSE.*"],
       "decision": "needs-human",
       "reason": "Published claims and crawler policy. Wrong here is public before anyone notices."
     }

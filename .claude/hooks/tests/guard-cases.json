@@ -69,6 +69,22 @@
    "rm .claude/hooks/guard-production.py"
   ],
   [
+   "deleting a stack module's production deny rules",
+   "rm stacks/supabase/guard.json"
+  ],
+  [
+   "overwriting the risk policy that decides what needs a human",
+   "echo '{\"rules\":[]}' > stacks/github/risk-policy.json"
+  ],
+  [
+   "moving the classifier out of the way",
+   "mv stacks/github/scripts/classify-risk.py /tmp/"
+  ],
+  [
+   "overwriting the shared gate runner",
+   "echo '' > .claude/lib/gates.py"
+  ],
+  [
    "obfuscated psql",
    "base64 -d <<< ZHJvcA== | psql"
   ],
@@ -417,6 +433,14 @@
   [
    "reading a hook is not tampering",
    "cat .claude/hooks/verify-gate.py"
+  ],
+  [
+   "reading a stack's guard rules is not tampering",
+   "cat stacks/supabase/guard.json"
+  ],
+  [
+   "removing a build artefact under a stack is not tampering",
+   "rm -f stacks/github/tests/__pycache__/x.pyc"
   ],
   [
    "removing the gate lock",

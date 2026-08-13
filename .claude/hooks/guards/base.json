@@ -67,8 +67,8 @@
     },
     {
       "id": "guard-tampering",
-      "$comment": "Confined to one command segment. It used to span newlines and separators, so an rm on one line matched a .claude/hooks path on another — a lint command in the same block read as tampering.",
-      "pattern": "\\b(rm|mv|truncate)\\s[^|;&\\n]*\\.claude/(hooks|settings|profiles|scripts)|>\\s*\\.claude/(hooks|settings|profiles|scripts)",
+      "$comment": "Confined to one command segment. It used to span newlines and separators, so an rm on one line matched a .claude/hooks path on another — a lint command in the same block read as tampering. stacks/ is included because that is where each module's guard.json lives: deleting stacks/supabase/guard.json removes seven rules standing between a run and a remote database, and it was neither guarded here, denied in the profile, nor covered by the tamper fingerprint.",
+      "pattern": "\\b(rm|mv|truncate)\\s[^|;&\\n]*(\\.claude/(hooks|settings|profiles|scripts|lib)|stacks/[\\w.-]+/(guard\\.json|risk-policy\\.json|scripts))|>\\s*(\\.claude/(hooks|settings|profiles|scripts|lib)|stacks/[\\w.-]+/(guard\\.json|risk-policy\\.json|scripts))",
       "reason": "Modifying Trellis's own guardrails."
     },
     {

@@ -1,30 +1,239 @@
 {
  "auto": [
-  ["ordinary source",        ["src/components/Button.tsx"]],
-  ["tests",                  ["tests/button.test.ts"]],
-  ["docs",                   ["docs/specs/SPEC-004-thing.md", "README.md"]],
-  ["styles",                 ["src/styles.css"]],
-  ["several ordinary files", ["src/a.ts", "src/b.ts", "tests/a.test.ts"]],
-  ["mockups",                ["docs/mockups/SPEC-004/page.html"]]
+  [
+   "ordinary source",
+   [
+    "src/components/Button.tsx"
+   ]
+  ],
+  [
+   "tests",
+   [
+    "tests/button.test.ts"
+   ]
+  ],
+  [
+   "docs",
+   [
+    "docs/specs/SPEC-004-thing.md",
+    "README.md"
+   ]
+  ],
+  [
+   "styles",
+   [
+    "src/styles.css"
+   ]
+  ],
+  [
+   "several ordinary files",
+   [
+    "src/a.ts",
+    "src/b.ts",
+    "tests/a.test.ts"
+   ]
+  ],
+  [
+   "mockups",
+   [
+    "docs/mockups/SPEC-004/page.html"
+   ]
+  ],
+  [
+   "a component named after a legal page, not the page",
+   [
+    "app/admin/terms-editor.tsx"
+   ]
+  ],
+  [
+   "privacy badge component",
+   [
+    "components/privacy-badge.tsx"
+   ]
+  ],
+  [
+   "a service whose name merely starts with term",
+   [
+    "src/lib/termination-service.ts"
+   ]
+  ],
+  [
+   "sitemap generator source, not the sitemap",
+   [
+    "src/lib/sitemap-builder.ts"
+   ]
+  ],
+  [
+   "a manifest with no dependency change in its added lines",
+   [
+    "package.json"
+   ]
+  ]
  ],
  "needsHuman": [
-  ["ci workflow",            [".github/workflows/ci.yml"]],
-  ["trellis guardrail hook", [".claude/hooks/verify-gate.py"]],
-  ["project declaration",    ["trellis.json"]],
-  ["git hooks",              [".githooks/pre-commit"]],
-  ["package.json",           ["package.json"]],
-  ["lockfile",               ["pnpm-lock.yaml"]],
-  ["auth code",              ["src/auth/session.ts"]],
-  ["middleware",             ["src/middleware.ts"]],
-  ["rls policy",             ["supabase/policies/posts.policy.sql"]],
-  ["env file",               [".env.production"]],
-  ["terraform",              ["infra/main.tf"]],
-  ["dockerfile",             ["Dockerfile"]],
-  ["billing",                ["src/billing/subscribe.ts"]],
-  ["stripe webhook",         ["src/webhooks/stripe.ts"]],
-  ["robots.txt",             ["public/robots.txt"]],
-  ["privacy policy",         ["src/app/privacy/page.tsx"]],
-  ["vercel config",          ["vercel.json"]],
-  ["one bad among many good",["src/a.ts", "src/b.ts", ".github/workflows/ci.yml"]]
+  [
+   "ci workflow",
+   [
+    ".github/workflows/ci.yml"
+   ]
+  ],
+  [
+   "trellis guardrail hook",
+   [
+    ".claude/hooks/verify-gate.py"
+   ]
+  ],
+  [
+   "project declaration",
+   [
+    "trellis.json"
+   ]
+  ],
+  [
+   "git hooks",
+   [
+    ".githooks/pre-commit"
+   ]
+  ],
+  [
+   "lockfile",
+   [
+    "pnpm-lock.yaml"
+   ]
+  ],
+  [
+   "auth code",
+   [
+    "src/auth/session.ts"
+   ]
+  ],
+  [
+   "middleware",
+   [
+    "src/middleware.ts"
+   ]
+  ],
+  [
+   "rls policy",
+   [
+    "supabase/policies/posts.policy.sql"
+   ]
+  ],
+  [
+   "env file",
+   [
+    ".env.production"
+   ]
+  ],
+  [
+   "terraform",
+   [
+    "infra/main.tf"
+   ]
+  ],
+  [
+   "dockerfile",
+   [
+    "Dockerfile"
+   ]
+  ],
+  [
+   "billing",
+   [
+    "src/billing/subscribe.ts"
+   ]
+  ],
+  [
+   "stripe webhook",
+   [
+    "src/webhooks/stripe.ts"
+   ]
+  ],
+  [
+   "robots.txt",
+   [
+    "public/robots.txt"
+   ]
+  ],
+  [
+   "privacy policy",
+   [
+    "src/app/privacy/page.tsx"
+   ]
+  ],
+  [
+   "vercel config",
+   [
+    "vercel.json"
+   ]
+  ],
+  [
+   "one bad among many good",
+   [
+    "src/a.ts",
+    "src/b.ts",
+    ".github/workflows/ci.yml"
+   ]
+  ],
+  [
+   "the terms page itself",
+   [
+    "app/terms/page.tsx"
+   ]
+  ],
+  [
+   "a terms document",
+   [
+    "content/terms.mdx"
+   ]
+  ],
+  [
+   "a privacy document",
+   [
+    "content/privacy.html"
+   ]
+  ],
+  [
+   "a stack module's production guard rules",
+   [
+    "stacks/supabase/guard.json"
+   ]
+  ],
+  [
+   "the risk policy that decides all this",
+   [
+    "stacks/github/risk-policy.json"
+   ]
+  ],
+  [
+   "the classifier that reads it",
+   [
+    "stacks/github/scripts/classify-risk.py"
+   ]
+  ],
+  [
+   "the delivery script",
+   [
+    "stacks/github/scripts/deliver-run.sh"
+   ]
+  ],
+  [
+   "the shared gate runner",
+   [
+    ".claude/lib/gates.py"
+   ]
+  ],
+  [
+   "the framework manifest",
+   [
+    ".claude/framework-paths.json"
+   ]
+  ],
+  [
+   "a lockfile, which changes only when dependencies do",
+   [
+    "package-lock.json"
+   ]
+  ]
  ]
 }

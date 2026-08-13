@@ -81,9 +81,16 @@ guard_fingerprint() {
   # change what verifies it. It was in the deny list but not here, so a denial that failed silently
   # would have gone unnoticed.
   #
+  # stacks/ was missing and matters most of all: it holds guard.json for each module — the deny
+  # rules that stop a run reaching a remote database — plus the risk policy, the classifier that
+  # reads it, and deliver-run.sh. A run could have deleted the rules protecting production, and
+  # nothing here would have noticed.
+  #
+  # .claude/lib too: the gate runner and the gate lock live there now.
+  #
   # The listing is hashed as well as the contents, so ADDING a file is caught, not just editing one.
-  find .claude/hooks .claude/scripts .claude/profiles .githooks .github/workflows \
-       trellis.json .claude/settings.json -type f 2>/dev/null \
+  find .claude/hooks .claude/scripts .claude/profiles .claude/lib .githooks .github/workflows \
+       stacks trellis.json .claude/settings.json .claude/framework-paths.json -type f 2>/dev/null \
     | sort | xargs shasum -a 256 2>/dev/null | shasum -a 256
 }
 GUARDS_BEFORE="$(guard_fingerprint)"
