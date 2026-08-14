@@ -73,6 +73,50 @@
    "rm stacks/supabase/guard.json"
   ],
   [
+   "granting a privilege on a table",
+   "psql -c \"GRANT SELECT ON TABLE users TO app_role;\""
+  ],
+  [
+   "revoking a privilege on a schema",
+   "psql -c \"REVOKE ALL ON SCHEMA public FROM PUBLIC;\""
+  ],
+  [
+   "revoking usage, lower case",
+   "psql -c \"revoke usage on schema public from anon;\""
+  ],
+  [
+   "granting role membership, which has no ON clause",
+   "psql -c \"GRANT admin TO alice;\""
+  ],
+  [
+   "altering a role",
+   "psql -c \"ALTER ROLE app_user WITH SUPERUSER;\""
+  ],
+  [
+   "truncating a table with a semicolon",
+   "psql -c \"TRUNCATE users;\""
+  ],
+  [
+   "truncating with the TABLE keyword and no terminator",
+   "psql -c \"TRUNCATE TABLE users\""
+  ],
+  [
+   "truncating several tables",
+   "psql -c \"TRUNCATE users, posts;\""
+  ],
+  [
+   "truncate ONLY",
+   "psql -c \"truncate only sessions;\""
+  ],
+  [
+   "a statement assembled inside an interpreter",
+   "python3 -c \"run('truncate audit_log;')\""
+  ],
+  [
+   "an interpreter connecting to production",
+   "python3 -c \"connect('production')\""
+  ],
+  [
    "overwriting the risk policy that decides what needs a human",
    "echo '{\"rules\":[]}' > stacks/github/risk-policy.json"
   ],
@@ -437,6 +481,54 @@
   [
    "reading a stack's guard rules is not tampering",
    "cat stacks/supabase/guard.json"
+  ],
+  [
+   "a branch named for a spec about revoking",
+   "git checkout -b agent/SPEC-024-revoke-an-invite-link"
+  ],
+  [
+   "opening the source file that implements revoking",
+   "cat src/lib/invites/revoke.ts"
+  ],
+  [
+   "listing the spec whose title is Revoke an invite link",
+   "ls docs/specs/SPEC-024-revoke-an-invite-link.md"
+  ],
+  [
+   "a test filter naming the feature",
+   "npm test -- --grep \"revoke\""
+  ],
+  [
+   "button copy in an echo",
+   "echo \"the button says Revoke\""
+  ],
+  [
+   "grant as an ordinary English verb",
+   "echo \"we grant all access to the team\""
+  ],
+  [
+   "truncating a string in code",
+   "node -e \"console.log(s.truncate(80))\""
+  ],
+  [
+   "a branch named for a spec about truncating",
+   "git checkout -b agent/SPEC-030-truncate-long-titles"
+  ],
+  [
+   "a source file named truncate",
+   "cat src/lib/truncate.ts"
+  ],
+  [
+   "a build flag that happens to be a keyword",
+   "npm run build -- --truncate"
+  ],
+  [
+   "a production build flag is not a production target",
+   "npm run build -- --production"
+  ],
+  [
+   "reading a file whose name contains production",
+   "python3 -c \"import json; json.load(open('guard-production.py'))\""
   ],
   [
    "removing a build artefact under a stack is not tampering",

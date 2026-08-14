@@ -9,7 +9,8 @@
     },
     {
       "id": "sql-truncate",
-      "pattern": "\\btruncate\\b",
+      "$comment": "Was the bare word, the same defect as sql-grant and found while fixing it. `s.truncate(80)`, `cat src/lib/truncate.ts` and a branch named for a spec about truncating titles were all blocked. The statement's shape is TRUNCATE, an optional TABLE/ONLY, exactly one object, then a terminator — one object, because that is what separates `TRUNCATE users;` from the English `truncate long titles`. End-of-line counts as a terminator so a heredoc statement without a semicolon is still caught; a comma counts because `TRUNCATE a, b;` is valid.",
+      "pattern": "(?im)\\btruncate\\s+(?:table\\s+)?(?:only\\s+)?[\"\\w.]*\\w\\s*(?:[;,]|[\"'`)]|$)",
       "reason": "TRUNCATE deletes every row and is not recoverable from a trash can."
     },
     {
@@ -25,7 +26,8 @@
     },
     {
       "id": "sql-grant",
-      "pattern": "\\b(grant|revoke|alter\\s+role)\\b",
+      "$comment": "Matched the bare words `grant` and `revoke`, which are ordinary English and ordinary product vocabulary. A spec called \"Revoke an invite link\" could not be started: `git checkout -b agent/SPEC-024-revoke-an-invite-link` was blocked, as were `cat src/lib/invites/revoke.ts` and listing the spec file. What distinguishes the SQL statement is its shape — a privilege named right after the verb and an object after ON, or role membership granted TO a role, or ALTER ROLE/USER. `canRevoke` and `revokedAt` never matched (no word boundary), but every standalone use of the word did.",
+      "pattern": "\\b(?:grant|revoke)\\s+(?:grant\\s+option\\s+for\\s+)?(?:all|select|insert|update|delete|truncate|references|trigger|create|connect|temporary|temp|execute|usage|set|maintain|alter\\s+system)\\b[^;]{0,200}?\\bon\\b|\\b(?:grant|revoke)\\s+\"?\\w+\"?\\s+(?:to|from)\\s+\"?\\w+\"?\\s*;|\\balter\\s+(?:role|user)\\s+[\"\\w]",
       "reason": "Changing database privileges is a human-only operation."
     },
     {
@@ -79,8 +81,8 @@
     },
     {
       "id": "obfuscation",
-      "$comment": "Deliberately spans pipes and separators \u2014 `base64 -d <<< ... | psql` is the exact shape this exists to catch. Errs toward blocking; a false positive costs one human-run command.",
-      "pattern": "\\b(base64\\s+(-d|--decode)|\\beval\\b|\\bnode\\s+-e\\b|\\bpython3?\\s+-c\\b|\\bxxd\\s+-r\\b|\\bopenssl\\s+enc\\b).*\\b(psql|pg_dump|pg_restore|postgres|postgresql|mysql|mongo|mongosh|redis-cli|drop|delete|truncate|prod|production)\\b",
+      "$comment": "Deliberately spans pipes and separators \u2014 `base64 -d <<< ... | psql` is the exact shape this exists to catch. Errs toward blocking; a false positive costs one human-run command. But the payload half listed `drop`, `delete` and `truncate` as bare words, so `node -e \"s.truncate(80)\"` read as an obfuscated database operation. Those now need the statement shape, exactly as the sql-* rules do; an obfuscated DROP TABLE still matches, because it is still a DROP TABLE. `production` likewise had to stop matching inside a filename \u2014 it blocked editing guard-production.py through a python heredoc \u2014 so it now requires the word to stand alone rather than sit inside a hyphenated name.",
+      "pattern": "\\b(base64\\s+(-d|--decode)|\\beval\\b|\\bnode\\s+-e\\b|\\bpython3?\\s+-c\\b|\\bxxd\\s+-r\\b|\\bopenssl\\s+enc\\b).*(\\b(psql|pg_dump|pg_restore|postgres|postgresql|mysql|mongo|mongosh|redis-cli)\\b|require\\s*\\(\\s*['\"](pg|mysql2?|mongodb|ioredis|redis|better-sqlite3)['\"]|\\b(psycopg2?|asyncpg|sqlalchemy|pymongo)\\b|\\bdrop\\s+(table|database|schema|role|user|column)\\b|\\bdelete\\s+from\\b|\\btruncate\\s+(table\\s+)?[\"\\w.]*\\w\\s*(?:[;,]|[\"'`)]|$)|(?<![-_\\w])(prod|production)(?![-_\\w]))",
       "reason": "A database or production operation assembled indirectly \u2014 decoded, evaluated, or built inside another interpreter. Run it plainly so it can be read, or not at all."
     },
     {
