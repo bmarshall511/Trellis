@@ -75,7 +75,7 @@ MD
   git remote add origin "$REMOTE"
   git push -q origin main 2>/dev/null
 
-  git checkout -qb agent/SPEC-001
+  git checkout -qb "${BRANCH_NAME:-agent/SPEC-001}"
   mkdir -p src
   echo 'export const add=(a,b)=>a+b;' > src/add.js
   printf 'import {test} from "node:test";import assert from "node:assert";\n// AC-1\ntest("ac1_adds",()=>assert.equal(2,2));\n' > tests/add.test.js
@@ -227,6 +227,15 @@ else
 fi
 teardown
 
+# A branch named for what it holds. Four scripts hardcoded `agent/<id>`, so this failed at the very
+# end of a finished build with "no branch agent/SPEC-001" — naming a branch nobody had created.
+export MOCK_GH=green
+export BRANCH_NAME="agent/SPEC-001-add-two-numbers" # trellis:ignore-secret — a branch name
+setup DONE pull-request
+check 0 "a branch with a description after the id delivers"
+teardown
+unset BRANCH_NAME
+
 # An expired session cannot be repaired by retrying, so it must stop at once rather than spend the
 # budget attempting nothing and then blaming the code.
 export MOCK_GH=authfail
@@ -251,7 +260,7 @@ branch_case green        agent/SPEC-001 main           "success lands on the def
 
 echo
 if [ $FAILS -eq 0 ]; then
-  echo "deliver: all 21 cases correct"
+  echo "deliver: all 22 cases correct"
 else
   echo "$FAILS case(s) wrong"
 fi

@@ -37,7 +37,10 @@ say() { echo "  $*"; }
 SPEC_FILE="$(ls docs/specs/${SPEC_ID}*.md 2>/dev/null | head -1)"
 [[ -n "$SPEC_FILE" ]] || die "no spec matching '$SPEC_ID' in docs/specs/"
 
-BRANCH="agent/${SPEC_ID}"
+# Creates the canonical form. Delivery accepts a descriptive suffix too — see spec-branch.sh — so
+# resuming onto a branch somebody named agent/<id>-<what-it-is> works; this just picks one name when
+# there is nothing to resume onto.
+BRANCH="$(.claude/scripts/spec-branch.sh "$SPEC_ID" 2>/dev/null)" || BRANCH="agent/${SPEC_ID}"
 REPORT="${RUN_DIR}/${SPEC_ID}.md"
 mkdir -p "$RUN_DIR"
 

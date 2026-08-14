@@ -10,6 +10,7 @@
 #   labelfail     repository has no labels and cannot create them
 #   resume        a pull request is already open for the branch
 #   authfail      CI fails and the repair agent cannot authenticate
+# BRANCH_NAME lets a scenario use a descriptive branch; delivery accepts both forms.
 set -uo pipefail
 BEHAVIOUR="${MOCK_GH:-green}"
 COUNTER="${MOCK_GH_STATE:-/tmp/trellis-mock-gh-count}"
@@ -53,12 +54,12 @@ case "$1 ${2:-}" in
   "pr merge")
     [ "$BEHAVIOUR" = "mergerefused" ] && exit 1
     case "$BEHAVIOUR" in
-      labelfail|resume) git push -q origin "agent/SPEC-001:main" 2>/dev/null; exit 0 ;;
+      labelfail|resume) git push -q origin "${BRANCH_NAME:-agent/SPEC-001}:main" 2>/dev/null; exit 0 ;;
     esac
     # Actually land the merge in the test remote, so the script's fast-forward step is genuinely
     # exercised rather than skipped over. A mock that returns success without changing anything
     # would let a broken sync pass.
-    [ "$BEHAVIOUR" = "notmerged" ] || git push -q origin "agent/SPEC-001:main" 2>/dev/null
+    [ "$BEHAVIOUR" = "notmerged" ] || git push -q origin "${BRANCH_NAME:-agent/SPEC-001}:main" 2>/dev/null
     exit 0 ;;
 
   "pr view")

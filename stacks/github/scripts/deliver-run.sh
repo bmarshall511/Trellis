@@ -45,7 +45,9 @@ print(str(a.get('mayMerge', False)).lower(), a.get('mergeVia', 'local'), a.get('
 [ "$MAY_MERGE" = "true" ] || die "autonomy.mayMerge is not enabled"
 [ "$MERGE_VIA" = "pull-request" ] || die "autonomy.mergeVia is '$MERGE_VIA', not 'pull-request'"
 
-BRANCH="agent/${SPEC_ID}"
+# Accepts agent/<id> and agent/<id>-<description>. Four scripts hardcoded the first form while the
+# second is what people type, so a finished build failed at the last step naming a branch nobody made.
+BRANCH="$(.claude/scripts/spec-branch.sh "$SPEC_ID")" || exit 1
 REPORT="docs/runs/${SPEC_ID}.md"
 DEFAULT_BRANCH="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|origin/||')"
 [ -n "$DEFAULT_BRANCH" ] || DEFAULT_BRANCH="main"

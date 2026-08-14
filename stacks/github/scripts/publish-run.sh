@@ -16,7 +16,9 @@ die() { echo "publish-run: $*" >&2; exit 1; }
 [[ -n "$SPEC_ID" ]] || die "usage: publish-run.sh <spec-id> [--draft]"
 command -v gh >/dev/null || die "gh is not installed"
 
-BRANCH="agent/${SPEC_ID}"
+# Accepts agent/<id> and agent/<id>-<description>. Four scripts hardcoded the first form while the
+# second is what people type, so a finished build failed at the last step naming a branch nobody made.
+BRANCH="$(.claude/scripts/spec-branch.sh "$SPEC_ID")" || exit 1
 REPORT="docs/runs/${SPEC_ID}.md"
 git rev-parse --verify "$BRANCH" >/dev/null 2>&1 || die "no branch $BRANCH — has the run happened?"
 [[ -f "$REPORT" ]] || die "no run report at $REPORT"

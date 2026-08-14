@@ -19,7 +19,10 @@ be delivered by the automation, and nothing would tell you until you tried.
 2. Read the spec in full. Read its mockup if it has one.
 3. Run `.claude/scripts/spec-lint.py <id>`. **If it fails, stop and report — do not implement an unready spec.**
 4. Verify the approved mockup still matches its recorded hash. If it doesn't, approval is revoked; stop.
-5. **Create the branch:** `git checkout -b agent/<spec-id>` from a clean default branch.
+5. **Create the branch:** `git checkout -b agent/<spec-id>` from a clean default branch. A
+   description may follow the id — `agent/SPEC-024-revoke-an-invite-link` delivers the same as
+   `agent/SPEC-024` — but only one branch per spec id may exist, or delivery cannot tell which
+   holds the work.
 6. Set status to `building`.
 
 ## While building

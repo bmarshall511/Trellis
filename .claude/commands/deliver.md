@@ -49,8 +49,12 @@ and report the delivery script looks for were never created.
 Only after confirming the gates pass and coverage is complete — the report states those as fact, so
 writing it against red gates is writing something untrue.
 
-**Not on `agent/<id>`**: the delivery script looks for that branch specifically. Rename with
-`git branch -m agent/<spec-id>`, or move the commits onto a correctly named branch.
+**Not on an agent branch**: delivery accepts `agent/<spec-id>` and `agent/<spec-id>-<description>`
+— `agent/SPEC-024` and `agent/SPEC-024-revoke-an-invite-link` both work. Anything else needs
+renaming with `git branch -m`, or the commits moving to a branch named that way.
+
+If two branches match one spec id, delivery refuses rather than picking one: which holds the work
+is not knowable from the name, and delivering the wrong one is worse than stopping.
 
 **`autonomy.mayMerge` not set**: nothing delivers automatically. Say so, and stop — do not merge by
 hand as a substitute.
