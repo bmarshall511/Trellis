@@ -133,10 +133,17 @@ def main():
         if absent:
             lines.append("- Gates declared absent: {}".format(", ".join(absent)))
 
+        # Saying what is missing is not enough. A declared stack whose module is absent contributes
+        # NOTHING and says nothing at the moment it matters — collect_rules() reads its guard.json,
+        # gets nothing back, and carries on. The project then looks protected by a stack it does not
+        # have. Everywhere else Trellis refuses silent absence; this is the same rule.
         for stack in stacks:
             path = os.path.join(REPO_ROOT, "stacks", stack, "SKILL.md")
             if not os.path.exists(path):
-                lines.append(f"- ⚠ `stacks/{stack}/` is declared but missing.")
+                lines.append(
+                    f"- ⚠ `stacks/{stack}/` is declared in trellis.json but is not present. None of "
+                    f"its guard rules are loaded, so commands that stack exists to block will run. "
+                    f"Fix with `.claude/scripts/trellis-update.sh`, or remove it from `stacks`.")
 
     # Specs needing a human, and what is ready to build.
     specs_dir = os.path.join(REPO_ROOT, "docs", "specs")

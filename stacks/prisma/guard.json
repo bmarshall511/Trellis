@@ -1,0 +1,58 @@
+{
+  "$comment": "Prisma CLI commands that can reach production. Merged into the core guard when this stack is active. Every pattern has a test case in .claude/hooks/tests/guard-cases.json.",
+  "$targetProblem": "Prisma differs from the Supabase CLI in the way that matters here: it has no --local flag and no linked-project state. Every command takes its target from DATABASE_URL, read from the environment or a .env file. So the command text alone NEVER says which database is about to be changed, and `npx prisma migrate reset` is identical whether it wipes a scratch database or production. The rules below therefore require the target to be stated in the command, which is the only place the guard can see it.",
+  "deny": [
+    {
+      "id": "prisma-migrate-reset",
+      "$comment": "The one that matches the scenario this whole guard exists for: it drops the database and recreates it from migrations. There is no confirmation prompt with --force, and none at all in a non-interactive shell — which is what an unattended run is.",
+      "pattern": "\\bprisma\\b[^|;]*\\bmigrate\\s+reset\\b",
+      "reason": "prisma migrate reset DROPS the database and recreates it. Which database is decided by DATABASE_URL, which is not visible in this command. Put the target in the command so it can be read: DATABASE_URL=postgresql://…@localhost:5432/dev npx prisma migrate reset",
+      "unless": "DATABASE_URL\\s*=\\s*[\"']?(?:postgres|postgresql|mysql|mysql2)://[^\\s\"']*@?(?:localhost|127\\.0\\.0\\.1|\\[::1\\]|0\\.0\\.0\\.0|host\\.docker\\.internal)"
+    },
+    {
+      "id": "prisma-db-push-data-loss",
+      "$comment": "--accept-data-loss is Prisma asking a question and being told not to ask. Dropping columns and tables is exactly what it accepts.",
+      "pattern": "\\bprisma\\b[^|;]*\\bdb\\s+push\\b[^|;]*--accept-data-loss",
+      "reason": "prisma db push --accept-data-loss drops whatever columns and tables the schema no longer describes. The flag exists to suppress the warning that would otherwise stop this."
+    },
+    {
+      "id": "prisma-db-push",
+      "pattern": "\\bprisma\\b[^|;]*\\bdb\\s+push\\b",
+      "reason": "prisma db push writes the schema straight to a database with no migration file, so nothing records what changed. Its target is DATABASE_URL, which this command does not state. Put the target in the command.",
+      "unless": "DATABASE_URL\\s*=\\s*[\"']?(?:postgres|postgresql|mysql|mysql2)://[^\\s\"']*@?(?:localhost|127\\.0\\.0\\.1|\\[::1\\]|0\\.0\\.0\\.0|host\\.docker\\.internal)"
+    },
+    {
+      "id": "prisma-db-execute",
+      "$comment": "Arbitrary SQL, usually from a file the guard cannot read. Every sql-* rule in the base set is bypassed by putting the statement in that file.",
+      "pattern": "\\bprisma\\b[^|;]*\\bdb\\s+execute\\b",
+      "reason": "prisma db execute runs arbitrary SQL, normally from a file this guard cannot inspect. Whatever the file contains is invisible here."
+    },
+    {
+      "id": "prisma-migrate-resolve",
+      "$comment": "Not destructive itself, which is why it is easy to wave through. It edits the migration history to say a migration was applied when it was not, so the NEXT deploy runs against a schema nobody has verified.",
+      "pattern": "\\bprisma\\b[^|;]*\\bmigrate\\s+resolve\\b",
+      "reason": "prisma migrate resolve rewrites migration history to mark a migration applied or rolled back without running it. The database and the history then disagree, and the next deploy is the one that fails."
+    },
+    {
+      "id": "prisma-migrate-deploy",
+      "pattern": "\\bprisma\\b[^|;]*\\bmigrate\\s+deploy\\b",
+      "reason": "prisma migrate deploy applies pending migrations to whatever DATABASE_URL points at, which this command does not state. Migrations reach production through the deployment pipeline, not from a developer machine. State the target if this is local.",
+      "unless": "DATABASE_URL\\s*=\\s*[\"']?(?:postgres|postgresql|mysql|mysql2)://[^\\s\"']*@?(?:localhost|127\\.0\\.0\\.1|\\[::1\\]|0\\.0\\.0\\.0|host\\.docker\\.internal)"
+    }
+  ],
+  "$notAdded": {
+    "prisma-studio": [
+      "prisma studio opens a browser client onto DATABASE_URL, with full read AND write access, and is",
+      "not blocked. It is interactive: a human is at the keyboard by definition, which is the condition",
+      "every rule here is trying to restore. Blocking it would cost a tool used constantly in local",
+      "development and buy nothing an agent could not do more directly."
+    ],
+    "prisma-migrate-dev": [
+      "prisma migrate dev is not blocked, though it CAN drop and recreate on drift. It refuses to run",
+      "against a non-development database by design, and blocking it would stop the ordinary act of",
+      "authoring a migration -- which is most of what Prisma work is. The line is drawn at commands that",
+      "will act on any target they are given."
+    ]
+  },
+  "$unlessNote": "`unless` is matched against the command as typed. It cannot be folded into the pattern as a negative lookahead: the guard also matches a variant with leading environment assignments stripped, so the DATABASE_URL being offered as evidence is gone from that variant and the rule fires anyway. Stating the target is the only way a Prisma command says which database it will act on, so the exception has to be able to see it."
+}

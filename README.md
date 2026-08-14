@@ -222,7 +222,7 @@ trellis.json        what this project is and what it's built with
 
 ## Adding a technology
 
-`stacks/` ships two worked modules — Supabase and GitHub — plus a template. `/stack-add <name>` researches a technology
+`stacks/` ships three worked modules — Supabase, Prisma and GitHub — plus a template. `/stack-add <name>` researches a technology
 against primary sources and writes the module.
 
 A module can contribute a skill, guard patterns, a map extractor and staged config. See
@@ -234,8 +234,9 @@ production guard in this repo allowed everything through, and only a test caught
 ## Verifying it
 
 ```bash
-.claude/hooks/tests/run.py                   # 171 production-guard cases
+.claude/hooks/tests/run.py                   # 186 production-guard cases
 .claude/hooks/tests/sweep-ordinary-work.py   # 57 ordinary commands the guard must NOT block
+.claude/hooks/tests/test-alias-expansion.py  # 14 npm-alias resolution cases
 .claude/scripts/tests/run-secret-tests.py    # 26 secret-scanner cases
 .claude/scripts/tests/run-loop-tests.sh      #  7 unattended-run scenarios
 .claude/scripts/tests/run-merge-tests.sh     # 10 local-merge cases

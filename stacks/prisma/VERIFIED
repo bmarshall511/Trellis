@@ -1,0 +1,6 @@
+2026-08-14 — CLI destructive-command behaviour checked against Prisma's own documentation:
+`migrate reset` drops and recreates, `db push --accept-data-loss` drops columns and tables,
+`db execute` runs arbitrary SQL, `migrate resolve` edits history without running anything.
+
+NOT verified: version-specific flag changes, Prisma Postgres/Accelerate behaviour, and anything
+about pricing or limits. Check the vendor's own pages before relying on a specific flag or number.

@@ -71,12 +71,50 @@ HEREDOC_TO_PROSE = re.compile(
     r"gh\s+(?:pr|issue|release)\s+\w+)\b[^\n]*<<-?\s*'?\w+'?", re.I)
 
 
+# `npm run db:deploy` tells the guard nothing. The dangerous command lives in package.json, which is
+# a file, and this hook inspects commands. Every rule here was being asked to police a name chosen by
+# the project rather than an act — the same defect as matching `revoke`, but hiding a whole command
+# rather than a word. A real project runs almost everything through these aliases.
+#
+# So an alias is resolved to what it actually runs, and that text is judged too. Nested aliases are
+# followed, because `db:deploy` is routinely `prisma migrate deploy && npm run db:seed`.
+PKG_SCRIPT = re.compile(r"\b(?:npm|pnpm|yarn|bun)\s+(?:run\s+|run-script\s+|exec\s+)?([\w:.@/-]+)")
+MAX_ALIAS_DEPTH = 4
+
+
 def load_json(path):
     try:
         with open(path) as fh:
             return json.load(fh)
     except Exception:
         return {}
+
+
+def expand_package_scripts(text):
+    """Every command an npm-style alias in `text` would actually run, aliases followed.
+
+    Returns bodies only, never the original. A body is judged exactly as a typed command would be,
+    so a script that runs `psql -h prod` is caught whether it is typed or hidden behind `npm run`.
+    """
+    scripts = (load_json(os.path.join(REPO_ROOT, "package.json")).get("scripts") or {})
+    if not isinstance(scripts, dict) or not scripts:
+        return []
+
+    found, seen, frontier = [], set(), [text]
+    for _ in range(MAX_ALIAS_DEPTH):
+        nxt = []
+        for chunk in frontier:
+            for name in PKG_SCRIPT.findall(chunk):
+                body = scripts.get(name)
+                # `seen` guards against `a: npm run b` / `b: npm run a`, which would otherwise spin.
+                if isinstance(body, str) and name not in seen:
+                    seen.add(name)
+                    found.append(re.sub(r"\s+", " ", body).strip())
+                    nxt.append(body)
+        if not nxt:
+            break
+        frontier = nxt
+    return found
 
 
 def collect_rules():
@@ -126,7 +164,9 @@ def normalise(command):
                    for part in SEGMENT.split(text))
 
     flat = re.sub(r"\s+", " ", text).strip()
-    return {flat, ENV_PREFIX.sub("", flat)}
+    candidates = {flat, ENV_PREFIX.sub("", flat)}
+    candidates.update(expand_package_scripts(flat))
+    return candidates
 
 
 def main():
@@ -152,6 +192,23 @@ def main():
             regex = re.compile(pattern, re.IGNORECASE)
         except re.error:
             continue  # A broken pattern must not break the guard.
+
+        # `unless` is tested against the command as typed, never against the normalised candidates.
+        # That distinction is the whole point. Some tools decide what they will destroy from an
+        # environment variable — Prisma reads DATABASE_URL and has no --local flag — so the only way
+        # to make the target visible is to state it in the command. But normalise() also produces a
+        # variant with leading assignments stripped, which exists to catch `LEFTHOOK=0 git commit`,
+        # and that variant deletes exactly the evidence being offered. No deny pattern can express
+        # "safe when the environment says localhost" while that stripped variant is also being
+        # matched, so the exception is evaluated separately, on the original text.
+        exception = rule.get("unless")
+        if exception:
+            try:
+                if re.search(exception, command, re.IGNORECASE):
+                    continue
+            except re.error:
+                pass  # A broken exception fails closed: the rule still applies.
+
         if any(regex.search(text) for text in candidates):
             origin = " [{}]".format(rule["stack"]) if rule.get("stack") else ""
             sys.stderr.write(

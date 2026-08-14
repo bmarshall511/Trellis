@@ -201,6 +201,34 @@
    "rm -fr /"
   ],
   [
+   "prisma migrate reset drops the database",
+   "npx prisma migrate reset"
+  ],
+  [
+   "prisma migrate reset --force skips the prompt",
+   "npx prisma migrate reset --force"
+  ],
+  [
+   "prisma db push accepting data loss",
+   "npx prisma db push --accept-data-loss"
+  ],
+  [
+   "prisma db push writes schema with no migration record",
+   "npx prisma db push"
+  ],
+  [
+   "prisma migrate deploy against an unstated target",
+   "npx prisma migrate deploy"
+  ],
+  [
+   "prisma db execute runs SQL from a file the guard cannot read",
+   "npx prisma db execute --file ./x.sql --schema prisma/schema.prisma"
+  ],
+  [
+   "prisma migrate resolve rewrites history without running it",
+   "npx prisma migrate resolve --applied 20240101_init"
+  ],
+  [
    "a script named for acting on production",
    "bash scripts/deploy-prod.sh"
   ],
@@ -553,6 +581,38 @@
   [
    "a branch named for a spec about revoking",
    "git checkout -b agent/SPEC-024-revoke-an-invite-link"
+  ],
+  [
+   "prisma migrate reset with the target stated as localhost",
+   "DATABASE_URL=postgresql://u@localhost:5432/dev npx prisma migrate reset"
+  ],
+  [
+   "the same, quoted and with a password",
+   "DATABASE_URL=\"postgresql://u:p@localhost:5432/dev\" npx prisma migrate reset --force"
+  ],
+  [
+   "prisma db push with the target stated",
+   "DATABASE_URL=postgresql://u@127.0.0.1:5432/dev npx prisma db push"
+  ],
+  [
+   "authoring a migration is ordinary Prisma work",
+   "npx prisma migrate dev --name add_notes"
+  ],
+  [
+   "generating the client",
+   "npx prisma generate"
+  ],
+  [
+   "studio is interactive, so a human is already present",
+   "npx prisma studio"
+  ],
+  [
+   "validating the schema",
+   "npx prisma validate"
+  ],
+  [
+   "an npm alias that only seeds",
+   "npm run db:seed"
   ],
   [
    "drag-and-drop vocabulary",
