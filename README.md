@@ -256,6 +256,13 @@ stacks/github/tests/run-deliver-tests.sh     # 21 pull-request delivery cases
 The guard suite is the one to extend when you find a hole. Every rule in it exists because something
 got through.
 
+The sweep beside it asks the opposite question: does any rule fire on work that is entirely ordinary?
+That is the failure that does the damage. A rule blocking nothing is found in minutes; a rule blocking
+normal commands teaches everyone to route around the guard, and then it protects nothing while still
+looking like it does. Five rules have matched a word rather than an act — `revoke`, `truncate`, `drop`,
+`delete from`, and the payload half of the obfuscation rule — and every one was found by someone
+hitting it during real work rather than by a test. Add to the corpus whenever that happens again.
+
 The integrity check exists because each piece can be individually correct while the whole is broken — a
 command loading a renamed skill is silently a no-op, and nothing about it looks wrong.
 
@@ -271,8 +278,8 @@ into approved foundations, a mockup with every state, and the accessibility and 
 `type: app` requires. That run found four more defects, including a secret scanner that flagged 117 npm
 integrity hashes and would have blocked the first commit of any Node project.
 
-The unattended runner is tested against six scenarios, three of them adversarial: an agent that claims
-success with a gate red, one that claims success with a criterion untested, and one that disables the
+The unattended runner is tested against seven scenarios, four of them adversarial: an agent that claims
+success with a gate red, one that claims success with a criterion untested, one that disables the
 gates and then claims success, and one that empties a stack module's production guard rules while
 implementing the spec correctly. All four are caught.
 
