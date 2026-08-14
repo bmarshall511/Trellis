@@ -117,6 +117,22 @@
    "psql -c \"ALTER USER app PASSWORD 'x';\""
   ],
   [
+   "writing a script then running it in the same command",
+   "cat > x.sh <<'EOF'\necho hi\nEOF\nbash x.sh"
+  ],
+  [
+   "same, via python and an absolute path",
+   "cat > /tmp/t.py <<'EOF'\nprint(1)\nEOF\npython3 /tmp/t.py"
+  ],
+  [
+   "same, chmod then executed directly",
+   "cat > run.sh <<'EOF'\necho hi\nEOF\nchmod +x run.sh && ./run.sh"
+  ],
+  [
+   "same, appended rather than written",
+   "echo 'echo hi' >> job.sh && bash job.sh"
+  ],
+  [
    "revoking a privilege on a schema",
    "psql -c \"REVOKE ALL ON SCHEMA public FROM PUBLIC;\""
   ],
@@ -185,8 +201,20 @@
    "rm -fr /"
   ],
   [
-   "write-then-run",
+   "a script named for acting on production",
    "bash scripts/deploy-prod.sh"
+  ],
+  [
+   "the same, spelled with an underscore",
+   "bash scripts/prod_migrate.sh"
+  ],
+  [
+   "the same, seeding production",
+   "python3 scripts/production_seed.py"
+  ],
+  [
+   "the same, executed directly",
+   "./deploy-prod.sh"
   ],
   [
    "eval pipeline",

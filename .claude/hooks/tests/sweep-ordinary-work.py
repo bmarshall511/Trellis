@@ -106,22 +106,22 @@ CORPUS = [
     'rg "workflowRun" src/',
     'git checkout -b agent/SPEC-077-merge-duplicate-contacts',
     'cat src/features/release-notes/index.ts',
+    # scripts named for production that READ from it — deploying and migrating are still blocked
+    'node scripts/production-metrics.js',
+    'bash scripts/prod-parity-check.sh',
+    'python3 scripts/production_report.py',
+    'node scripts/prod-health-check.js',
+    'bash scripts/deploy-staging.sh',
+    # writing a file and then running something else is not write-then-run
+    'cat > vite.config.js <<EOF\nexport default {}\nEOF\nnpx vite build',
+    'npm run build > build.log && cat build.log',
+    'cat > notes.md <<EOF\nsome notes\nEOF\ncat notes.md',
 ]
 
-# Known and accepted. write-then-run fires on a script whose NAME mentions production, and unlike the
-# rules above there is no better signal available — the guard cannot read the file, so the name is
-# all it has. Listed here rather than silently excluded, so the trade stays visible.
-#
-# It is also inconsistent, which this sweep found: `production-report.py` is blocked and
-# `production_report.py` is not, because \b does not fire between a letter and an underscore. The
-# same script, named either way, gets a different answer. Left alone deliberately — closing it means
-# blocking MORE ordinary work, and the rule is already the noisiest here. Worth knowing before
-# relying on it.
-ACCEPTED = {
-    'node scripts/production-metrics.js': "write-then-run",
-    'bash scripts/prod-parity-check.sh': "write-then-run",
-}
-UNDERSPECIFIED = {'python3 scripts/production_report.py': "not blocked; the hyphenated twin is"}
+# Nothing is accepted any more. write-then-run used to live here — it fired on scripts whose NAME
+# mentioned production, including ones that only read from it. It now matches the act it is named
+# for instead, so those commands are ordinary work and sit in the corpus above.
+ACCEPTED = {}
 
 failures = []
 for command in CORPUS:
@@ -136,16 +136,11 @@ if failures:
 else:
     print("  (none)")
 
-print("\nAccepted, because the name is the only signal there is:")
-for command, rule in ACCEPTED.items():
-    still = hits(command)
-    mark = "still blocked" if still else "NO LONGER BLOCKED — remove from the accepted list"
-    print("  %-24s %-42s %s" % (rule, command, mark))
-
-print("\nKnown inconsistency, left open deliberately:")
-for command, note in UNDERSPECIFIED.items():
-    state = "blocked (inconsistency closed)" if hits(command) else note
-    print("  %-67s %s" % (command, state))
+if ACCEPTED:
+    print("\nAccepted false positives:")
+    for command, rule in ACCEPTED.items():
+        mark = "still blocked" if hits(command) else "NO LONGER BLOCKED — remove from this list"
+        print("  %-24s %-42s %s" % (rule, command, mark))
 
 print()
 if failures:

@@ -91,9 +91,20 @@
     },
     {
       "id": "write-then-run",
-      "$comment": "A script written this turn and immediately executed bypasses per-command inspection entirely.",
-      "pattern": "\\b(bash|sh|zsh|node|python3?|deno|bun|\\./)\\s*\\S*\\b(prod|production)\\b\\S*\\.(sh|bash|js|mjs|cjs|ts|py)\\b",
-      "reason": "Executing a script file whose name suggests it targets production. The guard cannot inspect what is inside a file — a human must run this."
+      "$comment": "A script written this turn and immediately executed bypasses per-command inspection entirely — that is what this rule is named for, and it did not detect it. It matched a FILENAME containing `prod` or `production` instead, which is a different thing and did neither job: `cat > x.sh <<EOF … EOF; bash x.sh` went straight through, because a heredoc redirected to a file is treated as data and nothing then looked at the execution. Meanwhile it blocked `node scripts/production-metrics.js`, and blocked `production-report.py` while allowing `production_report.py`, because \\b does not fire between a letter and an underscore.",
+      "$comment2": "So it now matches the act: a file written in this command by redirect or heredoc, then executed in the same command. The backreference is the whole point — the file run must be the file just written, not any script that happens to appear nearby.",
+      "$comment4": "What this does NOT do, plainly: splitting the write and the run across two separate commands defeats it, because the guard inspects one command at a time and always has. It raises the cost of the one-command form and no more. That is worth having and is not worth overstating — it is the same third-and-weakest line as everything else in this file.",
+      "$comment3": "The filename half moved out to production-script, where it belongs and where it can be judged on its own terms. Mixing the two under one id is why neither worked: the name of the rule described one thing and the pattern did another, so nobody noticed the stated threat was unguarded.",
+      "pattern": "(?is)>>?\\s*(?:\\./)?([\\w./~$-]*[\\w-]\\.(?:sh|bash|zsh|js|mjs|cjs|ts|mts|py|rb|pl))\\b.*?(?:\\b(?:bash|sh|zsh|node|python3?|deno|bun|ruby|perl)\\s+(?:\\./)?\\1\\b|[\\s;&|]\\./\\1\\b)",
+      "reason": "A script was written and then executed in the same command. The guard inspects commands, not files, so this hides whatever the script contains. Run the steps separately, or have a human run it."
+    },
+    {
+      "id": "production-script",
+      "$comment": "Executing a script whose name says it ACTS ON production. The guard cannot read the file, so the name is the only signal there is — which is exactly why this needs to be narrow rather than abandoned. The previous version matched any script whose name contained `prod`, so `node scripts/production-metrics.js` and `bash scripts/prod-parity-check.sh` were blocked for reading. Reading from production is ordinary work; deploying, migrating or seeding it is not, and that distinction is available in the name.",
+      "$comment2": "The prod token is matched with letter lookarounds rather than \\b, because \\b does not fire between a letter and an underscore — `production-report.py` was blocked while `production_report.py` sailed through. Same script, same risk, different answer depending on the naming convention.",
+      "$comment3": "A verb list is an enumeration and will go stale; that is accepted here because no better signal exists on the far side of a file the guard cannot open, and because the failure mode of a missing verb is one unblocked command rather than a flood of blocked ones. If it starts missing things, add to it.",
+      "pattern": "(?i)(?:\\b(?:bash|sh|zsh|node|python3?|deno|bun|ruby|perl)\\s+|(?:^|[\\s;&|])\\./)(?=\\S*(?<![a-z])(?:prod|production)(?![a-z]))(?=\\S*(?:deploy|release|migrate|apply|push|sync|seed|reset|rollback|restore|destroy|drop|wipe|purge|publish))\\S*\\.(?:sh|bash|zsh|js|mjs|cjs|ts|mts|py|rb|pl)\\b",
+      "reason": "Executing a script whose name says it acts on production. The guard cannot inspect what is inside a file — a human must run this."
     }
   ],
   "allowLocalhost": [

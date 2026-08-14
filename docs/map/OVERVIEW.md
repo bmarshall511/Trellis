@@ -33,6 +33,6 @@ Last 30 days. Where the work is, and where regressions are most likely.
 
 ---
 
-Generated 2026-08-14 13:24 UTC from commit `8dda2a9`.
+Generated 2026-08-14 13:38 UTC from commit `2dff432`.
 
 If this disagrees with the code, the code is right — regenerate with `.claude/scripts/build-map.py`.
