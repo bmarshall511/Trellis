@@ -15,14 +15,10 @@
       "Bash(security:*)",
       "Bash(op:*)",
       "Bash(git push --force:*)",
-      "Bash(git push origin main:*)",
-      "Bash(git push origin master:*)",
       "Bash(git reset --hard:*)",
       "Bash(gh secret:*)",
       "Bash(gh ruleset:*)",
       "Bash(gh workflow:*)",
-      "Bash(gh secret:*)",
-      "Bash(gh ruleset:*)",
       "Bash(gh repo delete:*)"
     ]
   },
@@ -76,6 +72,7 @@
   "$notes": {
     "deny-vs-guard": "The deny list catches the obvious shapes cheaply and applies in every permission mode. The guard hook catches what a glob cannot -- environment-variable prefixes, pipes, encoded payloads, remote connection strings. Both exist because either alone is porous.",
     "not-a-boundary": "None of this is a security boundary. It is a mistake-catcher. The real boundary is that production write credentials do not exist on this machine and the production role has no write grants.",
+    "removed-push-to-default-branch": "`Bash(git push origin main:*)` and the master twin are gone, for the same reason the matching guard rule went: what protects the default branch is the path work takes to reach it -- deliver-run.sh re-runs the gates, re-checks coverage, asks the risk classifier and waits for CI -- not a string match on one spelling of a command. They were also ineffective. Permission matching is by prefix, so `git push -q origin main` never matched them; they stopped the honest spelling and nothing else, and their only real effect was to hand the push to a human several times a day. A deny cannot be clicked past, so that cost is paid in every session and in every permission mode. Force pushes and hard resets stay denied: those destroy work, and a merge does not.",
     "no-ask-rules": "Trellis ships NO ask rules, deliberately. They apply in every permission mode, so a user who has explicitly opted out of prompts still gets them - surprising and paternalistic. And a prompt clicked through twenty times a day teaches people to click through prompts, which costs exactly the attention the load-bearing ones need. The protection here is the deny list and the guard hook, neither of which can be clicked past. Wanting confirmation before commits is a preference, and preferences belong to the person, not the framework - put an ask list in your personal settings."
   }
 }

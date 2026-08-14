@@ -26,13 +26,13 @@ Last 30 days. Where the work is, and where regressions are most likely.
 - `stacks/github/scripts/deliver-run.sh` (5 commits)
 - `stacks/github/tests/run-deliver-tests.sh` (5 commits)
 - `.claude/hooks/session-start.py` (5 commits)
+- `.claude/scripts/run-spec.sh` (4 commits)
 - `.claude/scripts/run-queue.sh` (4 commits)
 - `.claude/scripts/validate-config.py` (4 commits)
 - `.claude/hooks/write-handoff.py` (4 commits)
-- `.claude/scripts/tests/run-secret-tests.py` (4 commits)
 
 ---
 
-Generated 2026-08-13 23:56 UTC from commit `169a7a8`.
+Generated 2026-08-14 12:03 UTC from commit `b9d5558`.
 
 If this disagrees with the code, the code is right — regenerate with `.claude/scripts/build-map.py`.
