@@ -7,6 +7,15 @@
 #
 # Usage: write-run-report.sh <spec-id> <outcome> [detail]
 #   outcome: DONE | BLOCKED | FAILED | TAMPERED
+#
+# SLOW, and not obviously so from the name. It runs the gates to state their result as fact, so on a
+# project with a11y and perf gates this takes minutes rather than seconds — longer than a foreground
+# command is allowed. Background it and poll the log, exactly as delivery is backgrounded:
+#
+#   .claude/scripts/write-run-report.sh SPEC-024 DONE > /tmp/report.log 2>&1 &
+#
+# The gates are re-run rather than trusted from earlier because the report states them as fact, and a
+# fact copied from a previous commit is a claim about work that has since changed.
 set -uo pipefail
 
 SPEC_ID="${1:-}"

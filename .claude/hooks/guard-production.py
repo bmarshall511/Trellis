@@ -47,8 +47,15 @@ SEGMENT = re.compile(r"(\s*(?:&&|\|\||;|\||\n)\s*)")
 # the shell that invokes it.
 SUBSTITUTION = re.compile(r"\$\(|`|\$\{[^}]*[|;&]")
 
+# `-am` is `-a -m` written the way people actually write it, and `-qm` and `-sm` likewise. The list
+# named `-m` alone, so a message passed through any combined short flag was never stripped and was
+# then scanned as commands: `git commit -am "drag to drop table rows"` was blocked as a DROP TABLE.
+# It blocked quoting a phrase from a previous bug report in the commit message fixing that report.
+#
+# The property is a short-flag cluster ending in m, not a list of the clusters seen so far. Only
+# reached for commands that exist to record prose, so a stray `-rm` elsewhere is not in scope.
 PROSE_ARGS = re.compile(
-    r"(?:-m|--message|--title|--body|--subject|--notes)(?:=|\s+)"
+    r"(?:-[a-z]*m|--message|--title|--body|--subject|--notes)(?:=|\s+)"
     r"(\"[^\"]*\"|'[^']*'|\S+)", re.I)
 
 HEREDOC = re.compile(r"<<-?\s*'?(\w+)'?.*?^\1$", re.M | re.S)

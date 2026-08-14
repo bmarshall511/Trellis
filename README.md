@@ -234,13 +234,14 @@ production guard in this repo allowed everything through, and only a test caught
 ## Verifying it
 
 ```bash
-.claude/hooks/tests/run.py                   # 186 production-guard cases
+.claude/hooks/tests/run.py                   # 191 production-guard cases
 .claude/hooks/tests/sweep-ordinary-work.py   # 57 ordinary commands the guard must NOT block
 .claude/hooks/tests/test-alias-expansion.py  # 14 npm-alias resolution cases
-.claude/scripts/tests/run-secret-tests.py    # 26 secret-scanner cases
+.claude/scripts/tests/run-secret-tests.py    # 32 secret-scanner cases
 .claude/scripts/tests/run-loop-tests.sh      #  7 unattended-run scenarios
 .claude/scripts/tests/run-merge-tests.sh     # 10 local-merge cases
 .claude/scripts/tests/run-branch-tests.sh    #  8 spec-to-branch cases
+.claude/scripts/tests/run-update-tests.sh    #  9 self-update cases
 .claude/scripts/tests/run-mockup-tests.sh    #  8 approval-lock cases
 .claude/scripts/tests/run-integrity-tests.sh # 11 dangling-reference cases
 .claude/lib/tests/test-frontmatter.py        # 20 frontmatter-parser cases

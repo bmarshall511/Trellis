@@ -369,6 +369,10 @@
    "git commit -m \"$(delete from users)\""
   ],
   [
+   "a combined short flag does not make a substitution prose",
+   "git commit -am \"$(psql -c 'DROP TABLE users')\""
+  ],
+  [
    "reset --hard after a prose commit",
    "git commit -m \"wip\" && git reset -q --hard HEAD~3"
   ],
@@ -617,6 +621,22 @@
   [
    "drag-and-drop vocabulary",
    "echo \"drag to drop table rows into a new order\""
+  ],
+  [
+   "a commit message quoting a dangerous phrase, via -am",
+   "git commit -am \"guard: allow drag to drop table rows\""
+  ],
+  [
+   "the same via -qm",
+   "git commit -qm \"drag to drop table rows\""
+  ],
+  [
+   "the same on a tag",
+   "git tag -am \"drag to drop table rows\" v1"
+  ],
+  [
+   "the same after another command",
+   "git add -A && git commit -am \"drag to drop table rows\""
   ],
   [
    "a test filter naming a drop feature",

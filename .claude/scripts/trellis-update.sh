@@ -9,8 +9,10 @@
 # enumeration in this codebase: right on the day it is written. So the list comes from
 # .claude/framework-paths.json, which already exists and is already the authority on what Trellis owns.
 #
-# Your project's own files are never touched. Framework files are replaced wholesale, because you do
-# not own them — if you have edited one, that is what --check will tell you before anything changes.
+# Your project's own files are never touched — including ones you keep inside .claude/, which is
+# where Claude Code looks for launch.json, your own agents, and anything else you add. Framework
+# FILES are replaced, because you do not own them; framework DIRECTORIES are not, because you keep
+# things in them. If you have edited a framework file, --check says so before anything changes.
 #
 # Usage:
 #   trellis-update.sh                 update from the default upstream
@@ -81,6 +83,31 @@ set +u  # empty arrays under bash 3.2
 # next time some tool invents a cache folder.
 ignored() { git check-ignore -q "$1" 2>/dev/null; }
 
+# Copies upstream's files into place WITHOUT removing anything else.
+#
+# This used to be `rm -rf "$dst"` followed by `cp -R`, which replaced a framework directory
+# wholesale. That deleted .claude/launch.json on six consecutive updates in one project — while the
+# report printed "(gone upstream, left in place)" about that very file — and took .claude/agents/
+# and anything else the project kept there with it.
+#
+# Trellis owns the framework FILES in .claude/ and stacks/, not the directories. A project puts its
+# own files in .claude/ because that is where Claude Code looks for them; owning the directory means
+# owning things nobody said Trellis could have. A framework file genuinely deleted upstream now
+# lingers, which is exactly what the report has always claimed happens.
+copy_upstream_files() {  # copy_upstream_files <src> <dst>
+  local src="$1" dst="$2" rel
+  if [ -f "$src" ]; then
+    mkdir -p "$(dirname "$dst")"
+    cp -p "$src" "$dst"
+    return
+  fi
+  while IFS= read -r rel; do
+    [ -z "$rel" ] && continue
+    mkdir -p "$(dirname "$dst/$rel")"
+    cp -p "$src/$rel" "$dst/$rel"
+  done < <(cd "$src" 2>/dev/null && find . -type f | sed 's|^\./||')
+}
+
 file_diffs() {  # file_diffs <src> <dst> — prints one line per differing file
   local src="$1" dst="$2" rel
   if [[ -f "$src" ]]; then
@@ -125,7 +152,7 @@ for path in "${OWNED[@]}"; do
     else
       added+=("$dst")
     fi
-    $CHECK_ONLY || { mkdir -p "$(dirname "$dst")"; cp -R "$src" "$dst"; }
+    $CHECK_ONLY || copy_upstream_files "$src" "$dst"
     continue
   fi
 
@@ -140,7 +167,7 @@ for path in "${OWNED[@]}"; do
         modified_locally+=("$bare")
       fi
     done < <(file_diffs "$src" "$dst")
-    $CHECK_ONLY || { rm -rf "$dst"; mkdir -p "$(dirname "$dst")"; cp -R "$src" "$dst"; }
+    $CHECK_ONLY || copy_upstream_files "$src" "$dst"
   fi
 done
 

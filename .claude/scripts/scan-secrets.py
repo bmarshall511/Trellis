@@ -108,11 +108,27 @@ def shannon_entropy(value):
     return -sum((c / length) * math.log2(c / length) for c in counts.values())
 
 
+# A Trellis spec slug: a branch name, or a path to a spec file. These trip the entropy heuristic
+# often enough to matter, because the discriminator is entropy and not length — in one project
+# `agent/SPEC-022-blocks-in-the-data-download` was flagged at 41 characters while
+# `agent/SPEC-012-move-the-gate-lock-to-the-process-that-runs-the-gates` passed at 67. English
+# kebab-case sometimes clears 4.2 and sometimes does not, which reads as random behaviour to anyone
+# who has not read this function.
+#
+# Deliberately narrow. The tempting general rule — exempt anything that looks like hyphenated words —
+# would exempt `sk_live_...` on the strength of the word `live`, and a passphrase on the strength of
+# being words. This shape cannot be a credential: it is anchored, it names a spec, and every
+# character is [a-z0-9/-] with SPEC- and digits in fixed positions.
+SPEC_SLUG = re.compile(r"^(?:agent/|docs/specs/)?SPEC-\d+(?:-[a-z0-9]+)*(?:\.md)?$")
+
+
 def looks_random(value):
     """A long, high-entropy string is a credential more often than it is anything else."""
     if len(value) < 24:
         return False
     if PLACEHOLDERS.search(value):
+        return False
+    if SPEC_SLUG.match(value):
         return False
     return shannon_entropy(value) > 4.2
 
