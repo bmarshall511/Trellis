@@ -4,7 +4,8 @@
   "deny": [
     {
       "id": "sql-drop",
-      "pattern": "\\bdrop\\s+(database|schema|table|role|user)\\b",
+      "$comment": "Two adjacent words was not enough: `drag to drop table rows into a new order` and a test filter of `drop user` both matched. A DROP statement names exactly one object and then ends — with a terminator, CASCADE or RESTRICT — where the English keeps going into a sentence. The object may not be a bare quote, or `--grep \"drop user\"` matches on the quote itself.",
+      "pattern": "(?im)\\bdrop\\s+(?:table|database|schema|role|user|column|type|domain|constraint|index|view|sequence|function|procedure|trigger|policy|publication|extension)\\s+(?:if\\s+exists\\s+)?(?:\"[\\w.]+\"|[\\w.]+)\\s*(?:[;,]|[\"'`)]|\\b(?:cascade|restrict)\\b|$)",
       "reason": "DROP against a database. Schema changes belong in a reviewed migration, never an ad-hoc command."
     },
     {
@@ -15,9 +16,11 @@
     },
     {
       "id": "sql-unqualified-delete",
-      "pattern": "\\bdelete\\s+from\\s+[\\w.\\\"]+\\s*(?:;|$|[)\\\"'`])",
+      "pattern": "(?ims)\\bdelete\\s+from\\s+(?:\"[\\w.]+\"|[\\w.]+)\\s*(?:[;)`]|$)|(?=.*\\b(?:psql|pgcli|mysql|mariadb|mongosh|sqlite3|supabase|prisma|knex|sequelize|pg_restore|pg_dump)\\b).*\\bdelete\\s+from\\s+(?:\"[\\w.]+\"|[\\w.]+)\\b(?!\\s*where\\b)",
       "reason": "DELETE with no WHERE clause deletes every row.",
-      "$comment": "Terminator accepts a closing quote or paren so the rule still fires inside a command substitution."
+      "$comment": "`delete from cart` is ordinary product vocabulary as well as valid SQL, and the closing-quote terminator meant `--grep \"delete from cart\"` matched. The words alone cannot separate them, so the rule needs one of two things: a terminator that prose does not produce, or something in the command that can actually execute SQL. The client is found by lookahead rather than by position, so `echo \"...\" | psql` counts as much as `psql -c \"...\"`.",
+      "$comment2": "A terminator immediately after the table name IS the no-WHERE test — a qualified DELETE has WHERE there instead. Dropping it from the client branch made this fire on `DELETE FROM users WHERE id = 3`, the one statement it should permit. So the branches now test differently, because they face different risks. Without a client, prose is the danger, and only terminators prose does not produce count — a semicolon, a closing paren, a backtick, an end of line, but never a closing quote. With a client present, prose is not the danger and the semantic test is better: no WHERE clause. That also catches a heredoc fed to psql, where whitespace collapsing leaves no terminator to find and the old rule silently matched nothing.",
+      "$comment3": "The lookahead sits before the whitespace rather than after it. `\\s*(?!where)` would let the regex backtrack to zero spaces and pass the lookahead on the space itself, permitting every unqualified DELETE."
     },
     {
       "id": "sql-unqualified-update",
@@ -27,7 +30,8 @@
     {
       "id": "sql-grant",
       "$comment": "Matched the bare words `grant` and `revoke`, which are ordinary English and ordinary product vocabulary. A spec called \"Revoke an invite link\" could not be started: `git checkout -b agent/SPEC-024-revoke-an-invite-link` was blocked, as were `cat src/lib/invites/revoke.ts` and listing the spec file. What distinguishes the SQL statement is its shape — a privilege named right after the verb and an object after ON, or role membership granted TO a role, or ALTER ROLE/USER. `canRevoke` and `revokedAt` never matched (no word boundary), but every standalone use of the word did.",
-      "pattern": "\\b(?:grant|revoke)\\s+(?:grant\\s+option\\s+for\\s+)?(?:all|select|insert|update|delete|truncate|references|trigger|create|connect|temporary|temp|execute|usage|set|maintain|alter\\s+system)\\b[^;]{0,200}?\\bon\\b|\\b(?:grant|revoke)\\s+\"?\\w+\"?\\s+(?:to|from)\\s+\"?\\w+\"?\\s*;|\\balter\\s+(?:role|user)\\s+[\"\\w]",
+      "$comment2": "The ALTER branch was too loose twice over. First any identifier counted, so a sentence about altering a user's settings matched. Then the closing quote counted as a terminator, so a two-word phrase inside an echo matched. A bare `ALTER ROLE name` is not valid SQL — Postgres requires an action clause — so the quote and end-of-line terminators were buying nothing and costing ordinary sentences. It now needs a semicolon or a real role option.",
+      "pattern": "(?im)\\b(?:grant|revoke)\\s+(?:grant\\s+option\\s+for\\s+)?(?:all|select|insert|update|delete|truncate|references|trigger|create|connect|temporary|temp|execute|usage|set|maintain|alter\\s+system)\\b[^;]{0,200}?\\bon\\b|\\b(?:grant|revoke)\\s+\"?\\w+\"?\\s+(?:to|from)\\s+\"?\\w+\"?\\s*;|\\balter\\s+(?:role|user)\\s+(?:\"[\\w.]+\"|[\\w.]+)\\s*(?:[;,]|\\b(?:with|superuser|nosuperuser|createdb|nocreatedb|createrole|nocreaterole|login|nologin|password|encrypted|valid\\s+until|connection\\s+limit|bypassrls|inherit|replication|rename\\s+to|owner\\s+to|set|reset|in\\s+(?:group|role))\\b)",
       "reason": "Changing database privileges is a human-only operation."
     },
     {
@@ -59,7 +63,7 @@
       "id": "history-rewrite",
       "pattern": "\\bgit\\s+(?:reset\\b[^|;&]*?\\s--hard\\b|filter-branch\\b|filter-repo\\b|update-ref\\s+-d\\b|reflog\\s+(?:delete|expire)\\b)",
       "reason": "Irreversible history rewrite.",
-      "$comment": "Flags may be interleaved in any order \u2014 `git reset -q --hard` is the same command as `git reset --hard`. An earlier version required the two tokens to be adjacent and let the -q form through, which destroyed real work."
+      "$comment": "Flags may be interleaved in any order — `git reset -q --hard` is the same command as `git reset --hard`. An earlier version required the two tokens to be adjacent and let the -q form through, which destroyed real work."
     },
     {
       "id": "hook-bypass",
@@ -81,15 +85,15 @@
     },
     {
       "id": "obfuscation",
-      "$comment": "Deliberately spans pipes and separators \u2014 `base64 -d <<< ... | psql` is the exact shape this exists to catch. Errs toward blocking; a false positive costs one human-run command. But the payload half listed `drop`, `delete` and `truncate` as bare words, so `node -e \"s.truncate(80)\"` read as an obfuscated database operation. Those now need the statement shape, exactly as the sql-* rules do; an obfuscated DROP TABLE still matches, because it is still a DROP TABLE. `production` likewise had to stop matching inside a filename \u2014 it blocked editing guard-production.py through a python heredoc \u2014 so it now requires the word to stand alone rather than sit inside a hyphenated name.",
+      "$comment": "Deliberately spans pipes and separators — `base64 -d <<< ... | psql` is the exact shape this exists to catch. Errs toward blocking; a false positive costs one human-run command. But the payload half listed `drop`, `delete` and `truncate` as bare words, so `node -e \"s.truncate(80)\"` read as an obfuscated database operation. Those now need the statement shape, exactly as the sql-* rules do; an obfuscated DROP TABLE still matches, because it is still a DROP TABLE. `production` likewise had to stop matching inside a filename — it blocked editing guard-production.py through a python heredoc — so it now requires the word to stand alone rather than sit inside a hyphenated name.",
       "pattern": "\\b(base64\\s+(-d|--decode)|\\beval\\b|\\bnode\\s+-e\\b|\\bpython3?\\s+-c\\b|\\bxxd\\s+-r\\b|\\bopenssl\\s+enc\\b).*(\\b(psql|pg_dump|pg_restore|postgres|postgresql|mysql|mongo|mongosh|redis-cli)\\b|require\\s*\\(\\s*['\"](pg|mysql2?|mongodb|ioredis|redis|better-sqlite3)['\"]|\\b(psycopg2?|asyncpg|sqlalchemy|pymongo)\\b|\\bdrop\\s+(table|database|schema|role|user|column)\\b|\\bdelete\\s+from\\b|\\btruncate\\s+(table\\s+)?[\"\\w.]*\\w\\s*(?:[;,]|[\"'`)]|$)|(?<![-_\\w])(prod|production)(?![-_\\w]))",
-      "reason": "A database or production operation assembled indirectly \u2014 decoded, evaluated, or built inside another interpreter. Run it plainly so it can be read, or not at all."
+      "reason": "A database or production operation assembled indirectly — decoded, evaluated, or built inside another interpreter. Run it plainly so it can be read, or not at all."
     },
     {
       "id": "write-then-run",
       "$comment": "A script written this turn and immediately executed bypasses per-command inspection entirely.",
       "pattern": "\\b(bash|sh|zsh|node|python3?|deno|bun|\\./)\\s*\\S*\\b(prod|production)\\b\\S*\\.(sh|bash|js|mjs|cjs|ts|py)\\b",
-      "reason": "Executing a script file whose name suggests it targets production. The guard cannot inspect what is inside a file \u2014 a human must run this."
+      "reason": "Executing a script file whose name suggests it targets production. The guard cannot inspect what is inside a file — a human must run this."
     }
   ],
   "allowLocalhost": [
@@ -114,11 +118,10 @@
       "Force pushes and history rewrites remain blocked. Those are unrecoverable; a merge is not."
     ]
   },
-
   "$notes": [
     "A denylist cannot be complete. It is the third line of defence, not the first.",
     "The first is that production write credentials do not exist on this machine.",
     "The second is that the production role has no write grants, enforced by the database itself.",
-    "If a pattern here fires on legitimate work, do not weaken it silently \u2014 record the exception in docs/decisions/."
+    "If a pattern here fires on legitimate work, do not weaken it silently — record the exception in docs/decisions/."
   ]
 }

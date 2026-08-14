@@ -77,6 +77,46 @@
    "psql -c \"GRANT SELECT ON TABLE users TO app_role;\""
   ],
   [
+   "dropping a table with no terminator",
+   "psql -c \"DROP TABLE users\""
+  ],
+  [
+   "dropping a table guarded by IF EXISTS",
+   "psql -c \"DROP TABLE IF EXISTS users;\""
+  ],
+  [
+   "dropping with CASCADE",
+   "psql -c \"DROP SCHEMA public CASCADE;\""
+  ],
+  [
+   "dropping a column inside an ALTER",
+   "psql -c \"alter table posts drop column title;\""
+  ],
+  [
+   "a drop buried in a multi-statement command",
+   "psql -c \"begin; DROP TABLE a; commit;\""
+  ],
+  [
+   "a drop in a heredoc fed to a client",
+   "psql <<SQL\nDROP TABLE users;\nSQL"
+  ],
+  [
+   "an unqualified delete reaching a client through a pipe",
+   "echo \"DELETE FROM users\" | psql"
+  ],
+  [
+   "an unqualified delete with a terminator and no client",
+   "echo \"DELETE FROM users;\""
+  ],
+  [
+   "an unqualified delete in a heredoc fed to a client",
+   "psql <<SQL\nDELETE FROM users\nSQL"
+  ],
+  [
+   "altering a role's password",
+   "psql -c \"ALTER USER app PASSWORD 'x';\""
+  ],
+  [
    "revoking a privilege on a schema",
    "psql -c \"REVOKE ALL ON SCHEMA public FROM PUBLIC;\""
   ],
@@ -485,6 +525,58 @@
   [
    "a branch named for a spec about revoking",
    "git checkout -b agent/SPEC-024-revoke-an-invite-link"
+  ],
+  [
+   "drag-and-drop vocabulary",
+   "echo \"drag to drop table rows into a new order\""
+  ],
+  [
+   "a test filter naming a drop feature",
+   "npm test -- --grep \"drop user\""
+  ],
+  [
+   "a branch for a spec about dropping a field",
+   "git checkout -b agent/SPEC-041-drop-user-avatar"
+  ],
+  [
+   "a component called DropTable",
+   "cat src/components/DropTable.tsx"
+  ],
+  [
+   "dropping support for something, in prose",
+   "echo \"we should drop table support entirely\""
+  ],
+  [
+   "delete-from-cart as product vocabulary",
+   "echo \"delete from cart\""
+  ],
+  [
+   "a test filter naming a delete feature",
+   "npm test -- --grep \"delete from cart\""
+  ],
+  [
+   "altering a user's settings, in prose",
+   "echo \"alter user preferences in settings\""
+  ],
+  [
+   "two words that happen to read as SQL",
+   "echo \"alter user avatar\""
+  ],
+  [
+   "a soft reset is recoverable",
+   "git reset --soft HEAD~1"
+  ],
+  [
+   "resetting the local database is the supported path",
+   "supabase db reset --local"
+  ],
+  [
+   "removing build output",
+   "rm -rf ./dist"
+  ],
+  [
+   "a connection string pointing at localhost",
+   "echo \"DATABASE_URL=postgresql://postgres@localhost:5432/dev\""
   ],
   [
    "opening the source file that implements revoking",
